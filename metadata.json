@@ -1,0 +1,6 @@
+{
+  "name": "STORYCAST Studio",
+  "description": "Screenplay, character face & voice synthesis, live microphone recording, shot blocking, and real-time pre-visualization production studio.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

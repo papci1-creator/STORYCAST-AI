@@ -1,0 +1,1165 @@
+```html
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STORYCAST AI - Production Studio</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        studio: {
+                            bg: '#070b14',
+                            card: '#0f172a',
+                            border: '#1e293b',
+                            cyan: '#06b6d4',
+                            amber: '#f59e0b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #070b14;
+            color: #f8fafc;
+        }
+        /* Custom subtle scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 z-50 transform transition-all duration-300 translate-y-[-100px] opacity-0 bg-slate-800 border border-cyan-500/40 text-slate-100 px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2.5 text-sm font-medium">
+        <i data-lucide="sparkles" class="w-4 h-4 text-cyan-400"></i>
+        <span id="toast-message">Action completed</span>
+    </div>
+
+    <!-- Main Container -->
+    <div class="max-w-5xl w-full mx-auto px-4 py-5 flex-1 flex flex-col gap-6">
+
+        <!-- 1. HEADER -->
+        <header class="flex items-center justify-between border-b border-slate-800/80 pb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/40 flex items-center justify-center shadow-inner">
+                    <i data-lucide="clapperboard" class="w-5 h-5 text-cyan-400"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-bold tracking-tight text-lg text-white">STORYCAST <span class="text-cyan-400 font-mono text-sm px-1.5 py-0.5 bg-cyan-950/80 border border-cyan-800/60 rounded">AI</span></h1>
+                        <span class="hidden sm:inline-flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.5 rounded-full">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            Studio Ready
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400">Streamlined Narrative & Scene Engine</p>
+                </div>
+            </div>
+
+            <button onclick="exportProject()" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-semibold text-sm px-4 py-2 rounded-xl shadow-lg shadow-amber-500/10 flex items-center gap-2 transition active:scale-95">
+                <i data-lucide="download" class="w-4 h-4 stroke-[2.5]"></i>
+                <span>Export</span>
+            </button>
+        </header>
+
+        <!-- 2. NAVIGATION TABS -->
+        <nav class="grid grid-cols-3 gap-2 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
+            <button onclick="switchTab('script')" id="tab-btn-script" class="tab-btn flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition bg-slate-800 text-cyan-400 border border-cyan-500/30 shadow-sm">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+                <span>Script</span>
+            </button>
+            <button onclick="switchTab('cast')" id="tab-btn-cast" class="tab-btn flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition text-slate-400 hover:text-slate-200">
+                <i data-lucide="users" class="w-4 h-4"></i>
+                <span>Cast & Characters <span id="cast-count-badge" class="ml-1 text-xs bg-slate-800 text-cyan-400 px-1.5 py-0.2 rounded-full border border-slate-700">4</span></span>
+            </button>
+            <button onclick="switchTab('audio')" id="tab-btn-audio" class="tab-btn flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition text-slate-400 hover:text-slate-200">
+                <i data-lucide="mic" class="w-4 h-4"></i>
+                <span>Voice & Audio</span>
+            </button>
+        </nav>
+
+        <!-- MAIN WORKSPACE GRID (Responsive 1 col on mobile, 2 cols on desktop) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+            <!-- LEFT COLUMN: ACTIVE TAB CONTENT (7 Cols on LG) -->
+            <div class="lg:col-span-7 flex flex-col gap-4">
+
+                <!-- TAB 1: SCRIPT & SCREENPLAY VIEW -->
+                <section id="tab-script" class="bg-slate-900/60 border border-slate-800/90 rounded-2xl p-4 sm:p-5 flex flex-col gap-5 shadow-xl">
+                    
+                    <!-- Character Quick-Tags (Dynamically synced with Cast) -->
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between text-xs text-slate-400">
+                            <span class="font-medium flex items-center gap-1.5 text-slate-300">
+                                <i data-lucide="tag" class="w-3.5 h-3.5 text-cyan-400"></i>
+                                Tag Character to Scene
+                            </span>
+                            <button onclick="switchTab('cast')" class="text-cyan-400 hover:text-cyan-300 underline decoration-cyan-500/40 font-medium transition">
+                                + Edit / Add Cast
+                            </button>
+                        </div>
+                        <div id="character-tag-bar" class="flex flex-wrap gap-2">
+                            <!-- Dynamically populated from castData -->
+                        </div>
+                    </div>
+
+                    <!-- Simplified AI Auto-Complete Toolbar -->
+                    <div class="flex flex-col gap-2 pt-2 border-t border-slate-800/80">
+                        <span class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="wand-2" class="w-3.5 h-3.5 text-cyan-400"></i>
+                            AI Auto-Complete
+                        </span>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="aiInsert('dialogue')" class="py-2 px-3 rounded-lg bg-purple-950/40 hover:bg-purple-900/50 border border-purple-700/50 text-purple-200 text-xs font-medium flex items-center justify-center gap-1.5 transition active:scale-95">
+                                <i data-lucide="message-square-plus" class="w-3.5 h-3.5 text-purple-400"></i>
+                                <span>+ Dialogue</span>
+                            </button>
+                            <button onclick="aiInsert('prompt')" class="py-2 px-3 rounded-lg bg-amber-950/40 hover:bg-amber-900/50 border border-amber-700/50 text-amber-200 text-xs font-medium flex items-center justify-center gap-1.5 transition active:scale-95">
+                                <i data-lucide="film" class="w-3.5 h-3.5 text-amber-400"></i>
+                                <span>+ Scene Prompt</span>
+                            </button>
+                            <button onclick="aiInsert('beat')" class="py-2 px-3 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-700/50 text-emerald-200 text-xs font-medium flex items-center justify-center gap-1.5 transition active:scale-95">
+                                <i data-lucide="zap" class="w-3.5 h-3.5 text-emerald-400"></i>
+                                <span>+ Continue Beat</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Script Editor Textarea -->
+                    <div class="flex flex-col gap-2 pt-2 border-t border-slate-800/80">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-semibold tracking-wider text-slate-400 uppercase font-mono">Screenplay Editor</span>
+                            <div class="flex items-center gap-3 font-mono text-slate-400">
+                                <span id="word-count">14 words | 92 chars</span>
+                                <button onclick="clearScript()" class="text-slate-500 hover:text-rose-400 transition">Clear</button>
+                            </div>
+                        </div>
+                        <textarea id="script-editor" rows="5" oninput="updateCounts()" placeholder="Write your scene description or dialogue here..." class="w-full rounded-xl bg-slate-950/90 border border-slate-800 focus:border-cyan-500/60 focus:outline-none p-3.5 text-sm text-slate-100 leading-relaxed resize-y font-sans">The neon rain washed over the mirror-like pavement of Neo-Tokyo's lowest sublevel.</textarea>
+                    </div>
+
+                    <!-- Primary CTA Button -->
+                    <button onclick="generateScene()" id="generate-btn" class="w-full py-3.5 px-6 rounded-xl font-bold text-slate-950 text-sm tracking-wide uppercase bg-gradient-to-r from-cyan-400 via-teal-300 to-amber-400 hover:opacity-95 transition shadow-lg shadow-cyan-500/10 flex items-center justify-center gap-2 active:scale-[0.99]">
+                        <i data-lucide="sparkles" class="w-4 h-4 stroke-[2.5]"></i>
+                        <span>Generate Video Scene</span>
+                    </button>
+                </section>
+
+                <!-- TAB 2: CAST & CHARACTERS VIEW (Unlocked Face & Voice Editor) -->
+                <section id="tab-cast" class="hidden bg-slate-900/60 border border-slate-800/90 rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-xl">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+                        <div>
+                            <h2 class="text-sm font-semibold text-slate-100 uppercase tracking-wider font-mono flex items-center gap-2">
+                                <i data-lucide="user-cog" class="w-4 h-4 text-cyan-400"></i>
+                                <span>Cast Studio — Face & Voice Unlocked</span>
+                            </h2>
+                            <p class="text-xs text-slate-400 mt-0.5">Customize character faces, upload avatars, and tune AI voices</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleAllCastLocks()" id="global-lock-btn" class="text-xs bg-emerald-950/70 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-700/60 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+                                <i data-lucide="unlock" class="w-3.5 h-3.5"></i>
+                                <span>All Unlocked</span>
+                            </button>
+                            <button onclick="openCastModal()" class="text-xs bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-md shadow-cyan-500/10 transition active:scale-95">
+                                <i data-lucide="user-plus" class="w-3.5 h-3.5 stroke-[2.5]"></i>
+                                <span>Add Character</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Cast Cards List -->
+                    <div id="cast-list-container" class="flex flex-col gap-3 max-h-[540px] overflow-y-auto pr-1">
+                        <!-- Populated by renderCast() -->
+                    </div>
+                </section>
+
+                <!-- TAB 3: VOICE & AUDIO VIEW (Hidden by default) -->
+                <section id="tab-audio" class="hidden bg-slate-900/60 border border-slate-800/90 rounded-2xl p-5 flex flex-col gap-4 shadow-xl">
+                    <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider font-mono">Studio Audio Mix</h2>
+                    <div class="flex flex-col gap-3">
+                        <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-between">
+                            <div>
+                                <div class="text-sm font-medium text-white">Ambient Rain & Neon Hum</div>
+                                <div class="text-xs text-slate-400">Background Atmos Layer</div>
+                            </div>
+                            <input type="range" min="0" max="100" value="75" class="accent-cyan-400 cursor-pointer">
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-between">
+                            <div>
+                                <div class="text-sm font-medium text-white">Auto-Duck Music on Dialogue</div>
+                                <div class="text-xs text-slate-400">Lowers synth score when characters speak</div>
+                            </div>
+                            <span class="px-2.5 py-1 rounded bg-cyan-950 text-cyan-400 border border-cyan-800 text-xs font-mono">ACTIVE</span>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- RIGHT COLUMN: VIDEO PREVIEW & TIMELINE (5 Cols on LG) -->
+            <div class="lg:col-span-5 flex flex-col gap-4">
+
+                <section class="bg-slate-900/60 border border-slate-800/90 rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-xl">
+                    
+                    <!-- Scene Title & Simplified Controls Header -->
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                            <h3 id="active-scene-title" class="text-sm font-semibold text-white">Scene 1: Neon Rain on Lower Deck</h3>
+                        </div>
+                        <span class="text-xs font-mono text-slate-400">~45s est</span>
+                    </div>
+
+                    <!-- Streamlined Controls Bar -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-950/80 p-2 rounded-xl border border-slate-800 text-xs">
+                        <!-- Style Selector -->
+                        <select id="style-select" onchange="changeStyle()" class="bg-slate-900 text-slate-200 border border-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-500">
+                            <option value="cyberpunk">⚡ Cyberpunk VFX</option>
+                            <option value="noir">🌑 Tech Noir</option>
+                            <option value="anime">🌸 Synth Anime</option>
+                        </select>
+
+                        <div class="flex items-center gap-1.5">
+                            <!-- Aspect Ratio Toggle -->
+                            <button onclick="toggleAspect()" id="aspect-btn" class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-cyan-400 font-mono hover:border-cyan-500/50 transition">
+                                16:9
+                            </button>
+                            <!-- Loop Toggle -->
+                            <button onclick="toggleLoop()" id="loop-btn" class="px-2.5 py-1.5 rounded-lg bg-cyan-950/70 border border-cyan-600/50 text-cyan-300 font-medium transition">
+                                Loop: ON
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Canvas Video Player -->
+                    <div id="player-container" class="relative w-full aspect-video bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-inner group transition-all duration-300">
+                        <canvas id="preview-canvas" class="w-full h-full block"></canvas>
+
+                        <!-- Camera Overlay Pill -->
+                        <div class="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+                            <div class="bg-slate-950/85 backdrop-blur-md border border-slate-700/80 px-3 py-1 rounded-full flex items-center gap-2 text-[11px] font-mono text-cyan-300 shadow">
+                                <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                                <span id="camera-directive">CAMERA: Slow Dolly In [1.0x]</span>
+                            </div>
+                        </div>
+
+                        <!-- Center Play/Pause Button -->
+                        <button onclick="togglePlay()" id="play-btn" aria-label="Play or Pause" class="absolute inset-0 m-auto w-14 h-14 rounded-full bg-cyan-500/90 hover:bg-cyan-400 text-slate-950 flex items-center justify-center shadow-xl shadow-cyan-500/30 transition transform hover:scale-105 active:scale-95">
+                            <i data-lucide="pause" id="play-icon" class="w-6 h-6 fill-current"></i>
+                        </button>
+                    </div>
+
+                    <!-- Simple Scene Timeline -->
+                    <div class="flex flex-col gap-2 pt-1">
+                        <div class="flex items-center justify-between text-xs text-slate-400">
+                            <span class="font-mono uppercase tracking-wider text-[11px]">Sequenced Timeline</span>
+                            <button onclick="addNewScene()" class="text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1 transition">
+                                <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                                <span>Add Blank Scene</span>
+                            </button>
+                        </div>
+
+                        <div id="scene-timeline" class="grid grid-cols-3 gap-2">
+                            <!-- Dynamically populated by JS -->
+                        </div>
+                    </div>
+
+                </section>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL: ADD OR EDIT CHARACTER (FACE & VOICE) -->
+    <div id="cast-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full p-5 shadow-2xl flex flex-col gap-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="Drama" class="w-5 h-5 text-cyan-400"></i>
+                    <h3 id="modal-title" class="font-bold text-base text-white">Edit Character Face & Voice</h3>
+                </div>
+                <button onclick="closeCastModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <input type="hidden" id="edit-char-id">
+
+            <!-- Identity Row -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="sm:col-span-1">
+                    <label class="text-[11px] font-mono uppercase text-slate-400 block mb-1">Character Name</label>
+                    <input type="text" id="edit-char-name" placeholder="e.g. Elena" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none">
+                </div>
+                <div>
+                    <label class="text-[11px] font-mono uppercase text-slate-400 block mb-1">Story Role</label>
+                    <select id="edit-char-role" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none">
+                        <option value="PROT">PROT (Protagonist)</option>
+                        <option value="ANTA">ANTA (Antagonist)</option>
+                        <option value="SIDE">SIDE (Sidekick)</option>
+                        <option value="SUPP">SUPP (Supporting)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[11px] font-mono uppercase text-slate-400 block mb-1">Badge Color</label>
+                    <select id="edit-char-color" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none">
+                        <option value="orange">🟠 Neon Orange</option>
+                        <option value="cyan">🔵 Cyber Cyan</option>
+                        <option value="pink">🟣 Synth Pink</option>
+                        <option value="amber">🟡 Solar Amber</option>
+                        <option value="emerald">🟢 Matrix Emerald</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- UNLOCKED FACE / AVATAR SECTION -->
+            <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-cyan-400 uppercase font-mono flex items-center gap-1.5">
+                        <i data-lucide="scan-face" class="w-4 h-4"></i>
+                        Face & Visual Reference (Unlocked)
+                    </span>
+                    <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="edit-face-locked" class="accent-cyan-400 rounded">
+                        <span>Lock Face Seed</span>
+                    </label>
+                </div>
+
+                <!-- Avatar Preview + Upload or Preset -->
+                <div class="flex items-center gap-3.5">
+                    <div id="modal-avatar-preview" class="w-16 h-16 rounded-xl bg-slate-800 border border-cyan-500/40 flex items-center justify-center overflow-hidden shrink-0 text-xl font-bold text-cyan-300">
+                        E
+                    </div>
+                    <div class="flex flex-col gap-2 flex-1">
+                        <div class="flex flex-wrap gap-2">
+                            <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+                                <i data-lucide="upload" class="w-3.5 h-3.5 text-cyan-400"></i>
+                                <span>Upload Face Photo</span>
+                                <input type="file" id="edit-face-upload" accept="image/*" class="hidden" onchange="handleAvatarUpload(event)">
+                            </label>
+                            <button type="button" onclick="cyclePresetAvatar()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
+                                <span>Preset Avatar</span>
+                            </button>
+                            <button type="button" onclick="clearAvatarImage()" class="text-xs text-slate-400 hover:text-rose-400 px-2 py-1">
+                                Reset
+                            </button>
+                        </div>
+                        <span class="text-[11px] text-slate-400">Upload a custom portrait or describe facial features below.</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-mono uppercase text-slate-400 block mb-1">Facial Features & Wardrobe Prompt</label>
+                    <textarea id="edit-face-prompt" rows="2" placeholder="e.g. Sharp cybernetic eyes, silver bob haircut, weathered trench coat..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:border-cyan-400 focus:outline-none"></textarea>
+                </div>
+            </div>
+
+            <!-- UNLOCKED VOICE ENGINE SECTION -->
+            <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-amber-400 uppercase font-mono flex items-center gap-1.5">
+                        <i data-lucide="audio-waveform" class="w-4 h-4"></i>
+                        Voice Synthesis Profile (Unlocked)
+                    </span>
+                    <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="edit-voice-locked" class="accent-amber-400 rounded">
+                        <span>Lock Voice Clone</span>
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[11px] font-mono uppercase text-slate-400 block mb-1">Voice Model / Timbre</label>
+                        <select id="edit-voice-model" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none">
+                            <option value="Nova (Husky Alto)">Nova (Husky Alto)</option>
+                            <option value="Orion (Calm Tenor)">Orion (Calm Tenor)</option>
+                            <option value="Lyra (Ethereal Synth)">Lyra (Ethereal Synth)</option>
+                            <option value="Titan (Deep Gravel)">Titan (Deep Gravel)</option>
+                            <option value="Vega (Crisp Narrator)">Vega (Crisp Narrator)</option>
+                            <option value="Kairo (Cybernetic Mod)">Kairo (Cybernetic Mod)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-mono uppercase text-slate-400 block mb-1">Delivery Emotion / Accent</label>
+                        <input type="text" id="edit-voice-style" placeholder="e.g. Noir Whisper, Urgent, Robotic" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Pitch & Speed Sliders + Audition Button -->
+                <div class="grid grid-cols-2 gap-4 pt-1">
+                    <div>
+                        <div class="flex justify-between text-[11px] text-slate-400 font-mono mb-1">
+                            <span>Pitch</span>
+                            <span id="pitch-val-label">1.0x</span>
+                        </div>
+                        <input type="range" id="edit-voice-pitch" min="0.5" max="1.5" step="0.1" value="1.0" oninput="document.getElementById('pitch-val-label').textContent = this.value + 'x'" class="w-full accent-amber-400 cursor-pointer">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[11px] text-slate-400 font-mono mb-1">
+                            <span>Speed</span>
+                            <span id="speed-val-label">1.0x</span>
+                        </div>
+                        <input type="range" id="edit-voice-speed" min="0.7" max="1.4" step="0.1" value="1.0" oninput="document.getElementById('speed-val-label').textContent = this.value + 'x'" class="w-full accent-cyan-400 cursor-pointer">
+                    </div>
+                </div>
+
+                <button type="button" onclick="previewModalVoice()" class="w-full py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-amber-300 flex items-center justify-center gap-2 transition">
+                    <i data-lucide="volume-2" class="w-4 h-4"></i>
+                    <span>Test / Audition Voice Sample</span>
+                </button>
+            </div>
+
+            <!-- Modal Footer Buttons -->
+            <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+                <button type="button" id="delete-char-btn" onclick="deleteModalCharacter()" class="text-xs text-rose-400 hover:text-rose-300 font-medium flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-rose-950/40 transition">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    <span>Delete Character</span>
+                </button>
+                <div class="flex items-center gap-2 ml-auto">
+                    <button type="button" onclick="closeCastModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="saveCharacterModal()" class="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 transition">
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- APPLICATION STATE ---
+        const presetAvatars = [
+            "https://placehold.co/120x120/0f172a/38bdf8?text=CYBER+01",
+            "https://placehold.co/120x120/1e1b4b/f472b6?text=NEON+02",
+            "https://placehold.co/120x120/064e3b/34d399?text=SYNTH+03",
+            "https://placehold.co/120x120/451a03/fbbf24?text=CORP+04"
+        ];
+        let presetAvatarIndex = 0;
+        let tempAvatarUrl = "";
+
+        let castData = [
+            {
+                id: 'char-1',
+                name: 'Elena',
+                role: 'PROT',
+                color: 'orange',
+                archetype: 'Cyber-Detective',
+                facePrompt: 'Sharp cybernetic ocular implant, rain-slicked trench coat, neon orange collar',
+                avatarUrl: '',
+                voiceModel: 'Nova (Husky Alto)',
+                voiceStyle: 'Noir Gritty',
+                pitch: 1.0,
+                speed: 1.0,
+                faceLocked: false,
+                voiceLocked: false
+            },
+            {
+                id: 'char-2',
+                name: 'Leo',
+                role: 'PROT',
+                color: 'cyan',
+                archetype: 'Netrunner',
+                facePrompt: 'Glowing cyan neural jack, silver tech-visor, street hoodie',
+                avatarUrl: '',
+                voiceModel: 'Orion (Calm Tenor)',
+                voiceStyle: 'Fast & Analytical',
+                pitch: 1.1,
+                speed: 1.1,
+                faceLocked: false,
+                voiceLocked: false
+            },
+            {
+                id: 'char-3',
+                name: 'Aria',
+                role: 'SIDE',
+                color: 'pink',
+                archetype: 'AI Informant',
+                facePrompt: 'Holographic translucent skin, magenta bob haircut, geometric earrings',
+                avatarUrl: '',
+                voiceModel: 'Lyra (Ethereal Synth)',
+                voiceStyle: 'Harmonic Echo',
+                pitch: 1.3,
+                speed: 1.0,
+                faceLocked: false,
+                voiceLocked: false
+            },
+            {
+                id: 'char-4',
+                name: 'Malakor',
+                role: 'ANTA',
+                color: 'amber',
+                archetype: 'Syndicate Boss',
+                facePrompt: 'Chrome jaw prosthetic, tailored obsidian suit, golden cyber-eyes',
+                avatarUrl: '',
+                voiceModel: 'Titan (Deep Gravel)',
+                voiceStyle: 'Commanding & Cold',
+                pitch: 0.7,
+                speed: 0.9,
+                faceLocked: false,
+                voiceLocked: false
+            }
+        ];
+
+        const colorStyles = {
+            orange: { dot: 'bg-orange-400', box: 'bg-orange-500/20 border-orange-500/40 text-orange-400' },
+            cyan:   { dot: 'bg-cyan-400',   box: 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400' },
+            pink:   { dot: 'bg-pink-500',   box: 'bg-pink-500/20 border-pink-500/40 text-pink-400' },
+            amber:  { dot: 'bg-amber-500',  box: 'bg-amber-500/20 border-amber-500/40 text-amber-400' },
+            emerald:{ dot: 'bg-emerald-400',box: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400' }
+        };
+
+        const scenes = [
+            {
+                id: 1,
+                title: "Neon Rain on Lower Deck",
+                script: "The neon rain washed over the mirror-like pavement of Neo-Tokyo's lowest sublevel.",
+                camera: "CAMERA: Slow Dolly In [1.0x]",
+                style: "cyberpunk"
+            },
+            {
+                id: 2,
+                title: "Alleyway Confrontation",
+                script: "@Elena steps out from the holographic shadows. @Malakor waits beside a hovering spinner.",
+                camera: "CAMERA: Low Angle Pan [0.8x]",
+                style: "noir"
+            },
+            {
+                id: 3,
+                title: "Skyline Data Heist",
+                script: "@Leo jacks into the mainframe tower while @Aria monitors drone patrols overhead.",
+                camera: "CAMERA: Crane Orbit [1.2x]",
+                style: "anime"
+            }
+        ];
+
+        let currentSceneIndex = 0;
+        let isPlaying = true;
+        let isLooping = true;
+        let isWidescreen = false;
+        let visualStyle = 'cyberpunk';
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            renderCharacterTags();
+            renderCast();
+            renderTimeline();
+            updateCounts();
+            lucide.createIcons();
+            initCanvas();
+        };
+
+        // --- CAST & CHARACTERS MANAGEMENT (UNLOCKED FACE & VOICE) ---
+        function renderCharacterTags() {
+            const bar = document.getElementById('character-tag-bar');
+            bar.innerHTML = '';
+            castData.forEach(c => {
+                const st = colorStyles[c.color] || colorStyles.cyan;
+                const btn = document.createElement('button');
+                btn.onclick = () => insertTag(`@${c.name}`);
+                btn.className = "px-3 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-800 border border-slate-700 hover:border-cyan-500/50 text-xs font-mono flex items-center gap-1.5 transition active:scale-95";
+                btn.innerHTML = `
+                    <span class="w-2 h-2 rounded-full ${st.dot}"></span>
+                    <span class="text-slate-100 font-medium">@${c.name}</span>
+                    <span class="text-slate-500">(${c.role})</span>
+                `;
+                bar.appendChild(btn);
+            });
+            document.getElementById('cast-count-badge').textContent = castData.length;
+        }
+
+        function renderCast() {
+            const container = document.getElementById('cast-list-container');
+            container.innerHTML = '';
+
+            castData.forEach(c => {
+                const st = colorStyles[c.color] || colorStyles.cyan;
+                const card = document.createElement('div');
+                card.className = "p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-slate-700 transition flex flex-col gap-3";
+
+                const avatarContent = c.avatarUrl
+                    ? `<img src="${c.avatarUrl}" alt="${c.name}" class="w-full h-full object-cover" onerror="this.style.display='none'">`
+                    : `<span>${c.name.charAt(0).toUpperCase()}</span>`;
+
+                card.innerHTML = `
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div onclick="openCastModal('${c.id}')" title="Click to change face avatar" class="w-12 h-12 rounded-xl border ${st.box} flex items-center justify-center font-bold text-base overflow-hidden shrink-0 cursor-pointer relative group">
+                                ${avatarContent}
+                                <div class="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                                    <i data-lucide="camera" class="w-4 h-4 text-cyan-300"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-bold text-white">@${c.name}</span>
+                                    <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">${c.role}</span>
+                                </div>
+                                <p class="text-xs text-slate-400 line-clamp-1 mt-0.5" title="${c.facePrompt}">
+                                    <span class="text-cyan-400 font-mono text-[11px]">Face:</span> ${c.facePrompt || 'Custom visual profile'}
+                                </p>
+                                <p class="text-xs text-slate-400 mt-0.5">
+                                    <span class="text-amber-400 font-mono text-[11px]">Voice:</span> ${c.voiceModel} • <span class="text-slate-300">${c.voiceStyle}</span> (${c.pitch}x)
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button onclick="auditionCharacterVoice('${c.id}')" title="Audition Voice" class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-amber-400 transition">
+                                <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button onclick="openCastModal('${c.id}')" class="px-2.5 py-1.5 rounded-lg bg-cyan-950/60 hover:bg-cyan-900/70 border border-cyan-500/40 text-cyan-300 text-xs font-medium flex items-center gap-1 transition">
+                                <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+                                <span>Edit</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Inline Face & Voice Lock/Unlock Strip -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 text-[11px]">
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleSingleLock('${c.id}', 'face')" class="px-2 py-0.5 rounded flex items-center gap-1 border transition ${c.faceLocked ? 'bg-slate-900 border-slate-700 text-slate-400' : 'bg-emerald-950/50 border-emerald-700/50 text-emerald-300'}">
+                                <i data-lucide="${c.faceLocked ? 'lock' : 'unlock'}" class="w-3 h-3"></i>
+                                <span>Face ${c.faceLocked ? 'Locked' : 'Unlocked'}</span>
+                            </button>
+                            <button onclick="toggleSingleLock('${c.id}', 'voice')" class="px-2 py-0.5 rounded flex items-center gap-1 border transition ${c.voiceLocked ? 'bg-slate-900 border-slate-700 text-slate-400' : 'bg-emerald-950/50 border-emerald-700/50 text-emerald-300'}">
+                                <i data-lucide="${c.voiceLocked ? 'lock' : 'unlock'}" class="w-3 h-3"></i>
+                                <span>Voice ${c.voiceLocked ? 'Locked' : 'Unlocked'}</span>
+                            </button>
+                        </div>
+                        <button onclick="insertTag('@${c.name}'); switchTab('script');" class="text-slate-400 hover:text-cyan-400 font-mono transition">
+                            + Insert @${c.name} in Script →
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        function toggleSingleLock(charId, type) {
+            const c = castData.find(x => x.id === charId);
+            if (!c) return;
+            if (type === 'face') {
+                c.faceLocked = !c.faceLocked;
+                showToast(`@${c.name} Face ${c.faceLocked ? 'Locked' : 'Unlocked for editing'}`);
+            } else {
+                c.voiceLocked = !c.voiceLocked;
+                showToast(`@${c.name} Voice ${c.voiceLocked ? 'Locked' : 'Unlocked for editing'}`);
+            }
+            renderCast();
+        }
+
+        function toggleAllCastLocks() {
+            const anyLocked = castData.some(c => c.faceLocked || c.voiceLocked);
+            castData.forEach(c => {
+                c.faceLocked = !anyLocked;
+                c.voiceLocked = !anyLocked;
+            });
+            const btn = document.getElementById('global-lock-btn');
+            if (!anyLocked) {
+                btn.className = "text-xs bg-slate-800 text-slate-300 border border-slate-700 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition";
+                btn.innerHTML = `<i data-lucide="lock" class="w-3.5 h-3.5"></i><span>All Locked</span>`;
+                showToast("Locked all cast faces & voices");
+            } else {
+                btn.className = "text-xs bg-emerald-950/70 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-700/60 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition";
+                btn.innerHTML = `<i data-lucide="unlock" class="w-3.5 h-3.5"></i><span>All Unlocked</span>`;
+                showToast("Unlocked all cast faces & voices!");
+            }
+            renderCast();
+        }
+
+        function openCastModal(charId = null) {
+            const modal = document.getElementById('cast-modal');
+            const delBtn = document.getElementById('delete-char-btn');
+
+            if (charId) {
+                const c = castData.find(x => x.id === charId);
+                if (!c) return;
+                document.getElementById('modal-title').textContent = `Edit @${c.name} — Face & Voice`;
+                document.getElementById('edit-char-id').value = c.id;
+                document.getElementById('edit-char-name').value = c.name;
+                document.getElementById('edit-char-role').value = c.role;
+                document.getElementById('edit-char-color').value = c.color;
+                document.getElementById('edit-face-prompt').value = c.facePrompt;
+                document.getElementById('edit-face-locked').checked = c.faceLocked;
+                document.getElementById('edit-voice-model').value = c.voiceModel;
+                document.getElementById('edit-voice-style').value = c.voiceStyle;
+                document.getElementById('edit-voice-pitch').value = c.pitch;
+                document.getElementById('edit-voice-speed').value = c.speed;
+                document.getElementById('pitch-val-label').textContent = c.pitch + 'x';
+                document.getElementById('speed-val-label').textContent = c.speed + 'x';
+                document.getElementById('edit-voice-locked').checked = c.voiceLocked;
+                tempAvatarUrl = c.avatarUrl || '';
+                delBtn.classList.remove('hidden');
+            } else {
+                document.getElementById('modal-title').textContent = `Add New Cast Character`;
+                document.getElementById('edit-char-id').value = '';
+                document.getElementById('edit-char-name').value = '';
+                document.getElementById('edit-char-role').value = 'PROT';
+                document.getElementById('edit-char-color').value = 'cyan';
+                document.getElementById('edit-face-prompt').value = 'Cyberpunk street mercenary, neon visor, leather jacket';
+                document.getElementById('edit-face-locked').checked = false;
+                document.getElementById('edit-voice-model').value = 'Vega (Crisp Narrator)';
+                document.getElementById('edit-voice-style').value = 'Confident & Clear';
+                document.getElementById('edit-voice-pitch').value = 1.0;
+                document.getElementById('edit-voice-speed').value = 1.0;
+                document.getElementById('pitch-val-label').textContent = '1.0x';
+                document.getElementById('speed-val-label').textContent = '1.0x';
+                document.getElementById('edit-voice-locked').checked = false;
+                tempAvatarUrl = '';
+                delBtn.classList.add('hidden');
+            }
+
+            updateModalAvatarPreview();
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeCastModal() {
+            document.getElementById('cast-modal').classList.add('hidden');
+        }
+
+        function updateModalAvatarPreview() {
+            const box = document.getElementById('modal-avatar-preview');
+            const nameVal = document.getElementById('edit-char-name').value.trim() || '?';
+            if (tempAvatarUrl) {
+                box.innerHTML = `<img src="${tempAvatarUrl}" alt="Avatar" class="w-full h-full object-cover">`;
+            } else {
+                box.innerHTML = `<span>${nameVal.charAt(0).toUpperCase()}</span>`;
+            }
+        }
+
+        function handleAvatarUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                tempAvatarUrl = e.target.result;
+                updateModalAvatarPreview();
+                showToast("Custom face photo loaded");
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function cyclePresetAvatar() {
+            tempAvatarUrl = presetAvatars[presetAvatarIndex % presetAvatars.length];
+            presetAvatarIndex++;
+            updateModalAvatarPreview();
+        }
+
+        function clearAvatarImage() {
+            tempAvatarUrl = '';
+            updateModalAvatarPreview();
+        }
+
+        function saveCharacterModal() {
+            const id = document.getElementById('edit-char-id').value;
+            const rawName = document.getElementById('edit-char-name').value.trim().replace(/^@/, '');
+            if (!rawName) {
+                showToast("Please enter a character name");
+                return;
+            }
+
+            const updatedObj = {
+                id: id || ('char-' + Date.now()),
+                name: rawName,
+                role: document.getElementById('edit-char-role').value,
+                color: document.getElementById('edit-char-color').value,
+                facePrompt: document.getElementById('edit-face-prompt').value.trim(),
+                avatarUrl: tempAvatarUrl,
+                voiceModel: document.getElementById('edit-voice-model').value,
+                voiceStyle: document.getElementById('edit-voice-style').value.trim() || 'Natural',
+                pitch: parseFloat(document.getElementById('edit-voice-pitch').value),
+                speed: parseFloat(document.getElementById('edit-voice-speed').value),
+                faceLocked: document.getElementById('edit-face-locked').checked,
+                voiceLocked: document.getElementById('edit-voice-locked').checked
+            };
+
+            if (id) {
+                const idx = castData.findIndex(x => x.id === id);
+                if (idx > -1) castData[idx] = updatedObj;
+                showToast(`Updated @${rawName}'s face & voice!`);
+            } else {
+                castData.push(updatedObj);
+                showToast(`Added @${rawName} to Cast & Script!`);
+            }
+
+            renderCharacterTags();
+            renderCast();
+            closeCastModal();
+        }
+
+        function deleteModalCharacter() {
+            const id = document.getElementById('edit-char-id').value;
+            const c = castData.find(x => x.id === id);
+            castData = castData.filter(x => x.id !== id);
+            renderCharacterTags();
+            renderCast();
+            closeCastModal();
+            if (c) showToast(`Removed @${c.name} from cast`);
+        }
+
+        function speakSample(name, model, pitch, rate) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utter = new SpeechSynthesisUtterance(`Voice check for ${name}. Neural link synchronized in Neo-Tokyo.`);
+                utter.pitch = pitch || 1.0;
+                utter.rate = rate || 1.0;
+                window.speechSynthesis.speak(utter);
+            }
+            showToast(`Playing ${name} (${model} @ ${pitch}x)`);
+        }
+
+        function auditionCharacterVoice(charId) {
+            const c = castData.find(x => x.id === charId);
+            if (!c) return;
+            speakSample(c.name, c.voiceModel, c.pitch, c.speed);
+        }
+
+        function previewModalVoice() {
+            const name = document.getElementById('edit-char-name').value.trim() || 'Character';
+            const model = document.getElementById('edit-voice-model').value;
+            const pitch = parseFloat(document.getElementById('edit-voice-pitch').value);
+            const speed = parseFloat(document.getElementById('edit-voice-speed').value);
+            speakSample(name, model, pitch, speed);
+        }
+
+        // --- UI & TAB FUNCTIONS ---
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = msg;
+            toast.classList.remove('translate-y-[-100px]', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-[-100px]', 'opacity-0');
+            }, 2400);
+        }
+
+        function switchTab(tab) {
+            ['script', 'cast', 'audio'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                const btn = document.getElementById(`tab-btn-${t}`);
+                btn.className = "tab-btn flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition text-slate-400 hover:text-slate-200";
+            });
+
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-btn-${tab}`);
+            activeBtn.className = "tab-btn flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition bg-slate-800 text-cyan-400 border border-cyan-500/30 shadow-sm";
+        }
+
+        // --- SCRIPT EDITOR FUNCTIONS ---
+        function updateCounts() {
+            const editor = document.getElementById('script-editor');
+            const text = editor.value.trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            const chars = editor.value.length;
+            document.getElementById('word-count').textContent = `${words} words | ${chars} chars`;
+            scenes[currentSceneIndex].script = editor.value;
+        }
+
+        function insertTag(tag) {
+            const editor = document.getElementById('script-editor');
+            const prefix = editor.value.endsWith(' ') || editor.value.length === 0 ? '' : ' ';
+            editor.value += `${prefix}${tag} `;
+            editor.focus();
+            updateCounts();
+            showToast(`Tagged ${tag} in script`);
+        }
+
+        function aiInsert(type) {
+            const editor = document.getElementById('script-editor');
+            const snippets = {
+                dialogue: '\n@Elena: "The signal is coming from beneath the reactor core. Stay sharp, @Leo."',
+                prompt: '\n[VFX PROMPT: Volumetric cyan fog, wet asphalt reflections, anamorphic lens flare]',
+                beat: '\nSuddenly, a syndicate recon drone sweeps its crimson spotlight across the plaza.'
+            };
+            editor.value += snippets[type];
+            updateCounts();
+            showToast(`Added AI ${type}`);
+        }
+
+        function clearScript() {
+            document.getElementById('script-editor').value = '';
+            updateCounts();
+            showToast('Script cleared');
+        }
+
+        function generateScene() {
+            const btn = document.getElementById('generate-btn');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Rendering Scene...</span>`;
+            lucide.createIcons();
+
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                lucide.createIcons();
+                isPlaying = true;
+                updatePlayIcon();
+                showToast(`Scene ${currentSceneIndex + 1} rendered & synced!`);
+            }, 900);
+        }
+
+        function exportProject() {
+            showToast('Exporting 1080p Studio Cut...');
+        }
+
+        // --- TIMELINE & CONTROLS ---
+        function renderTimeline() {
+            const container = document.getElementById('scene-timeline');
+            container.innerHTML = '';
+            scenes.forEach((scene, idx) => {
+                const active = idx === currentSceneIndex;
+                const btn = document.createElement('button');
+                btn.onclick = () => selectScene(idx);
+                btn.className = `p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                    active 
+                    ? 'bg-cyan-950/50 border-cyan-500/60 text-white shadow-sm' 
+                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`;
+                btn.innerHTML = `
+                    <div class="flex items-center justify-between w-full mb-1">
+                        <span class="text-[10px] font-mono uppercase ${active ? 'text-cyan-400' : 'text-slate-500'}">Shot 0${idx + 1}</span>
+                        <span class="w-1.5 h-1.5 rounded-full ${active ? 'bg-cyan-400' : 'bg-slate-700'}"></span>
+                    </div>
+                    <div class="text-xs font-medium truncate w-full">${scene.title}</div>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        function selectScene(index) {
+            currentSceneIndex = index;
+            const s = scenes[index];
+            document.getElementById('script-editor').value = s.script;
+            document.getElementById('active-scene-title').textContent = `Scene ${index + 1}: ${s.title}`;
+            document.getElementById('camera-directive').textContent = s.camera;
+            document.getElementById('style-select').value = s.style;
+            visualStyle = s.style;
+            updateCounts();
+            renderTimeline();
+        }
+
+        function addNewScene() {
+            const newId = scenes.length + 1;
+            scenes.push({
+                id: newId,
+                title: `New Shot ${newId}`,
+                script: "EXT. NEO-TOKYO SECTOR 9 - NIGHT\n",
+                camera: "CAMERA: Static Wide [1.0x]",
+                style: "cyberpunk"
+            });
+            selectScene(scenes.length - 1);
+            showToast(`Added Scene ${newId}`);
+        }
+
+        function changeStyle() {
+            visualStyle = document.getElementById('style-select').value;
+            scenes[currentSceneIndex].style = visualStyle;
+            showToast(`Style set to ${visualStyle.toUpperCase()}`);
+        }
+
+        function toggleAspect() {
+            isWidescreen = !isWidescreen;
+            const btn = document.getElementById('aspect-btn');
+            const player = document.getElementById('player-container');
+            if (isWidescreen) {
+                btn.textContent = '2.39:1';
+                player.classList.remove('aspect-video');
+                player.style.aspectRatio = '2.39 / 1';
+            } else {
+                btn.textContent = '16:9';
+                player.style.aspectRatio = '';
+                player.classList.add('aspect-video');
+            }
+            resizeCanvas();
+        }
+
+        function toggleLoop() {
+            isLooping = !isLooping;
+            const btn = document.getElementById('loop-btn');
+            btn.textContent = `Loop: ${isLooping ? 'ON' : 'OFF'}`;
+            btn.className = isLooping
+                ? "px-2.5 py-1.5 rounded-lg bg-cyan-950/70 border border-cyan-600/50 text-cyan-300 font-medium transition"
+                : "px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-400 font-medium transition";
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            updatePlayIcon();
+        }
+
+        function updatePlayIcon() {
+            const btn = document.getElementById('play-btn');
+            btn.innerHTML = `<i data-lucide="${isPlaying ? 'pause' : 'play'}" class="w-6 h-6 fill-current"></i>`;
+            lucide.createIcons();
+        }
+
+        // --- INTERACTIVE CYBERPUNK CANVAS PREVIEW ---
+        let canvas, ctx;
+        let raindrops = [];
+        let buildings = [];
+        let frame = 0;
+
+        function initCanvas() {
+            canvas = document.getElementById('preview-canvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Generate rain
+            for (let i = 0; i < 65; i++) {
+                raindrops.push({
+                    x: Math.random() * 600,
+                    y: Math.random() * 350,
+                    len: 10 + Math.random() * 15,
+                    speed: 4 + Math.random() * 5
+                });
+            }
+
+            // Generate skyline buildings
+            const count = 9;
+            for (let i = 0; i < count; i++) {
+                buildings.push({
+                    x: i * 68,
+                    w: 48 + Math.random() * 25,
+                    h: 90 + Math.random() * 120,
+                    beacon: Math.random() > 0.4
+                });
+            }
+
+            requestAnimationFrame(animateCanvas);
+        }
+
+        function resizeCanvas() {
+            if (!canvas) return;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+
+        function animateCanvas() {
+            if (isPlaying) {
+                frame++;
+            }
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Background Gradient based on selected style
+            const grad = ctx.createLinearGradient(0, 0, 0, h);
+            if (visualStyle === 'cyberpunk') {
+                grad.addColorStop(0, '#050816');
+                grad.addColorStop(0.6, '#0f172a');
+                grad.addColorStop(1, '#1e1b4b');
+            } else if (visualStyle === 'noir') {
+                grad.addColorStop(0, '#09090b');
+                grad.addColorStop(1, '#27272a');
+            } else {
+                grad.addColorStop(0, '#1e1b4b');
+                grad.addColorStop(0.6, '#3b0764');
+                grad.addColorStop(1, '#701a75');
+            }
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+
+            // Subtle camera dolly zoom effect
+            const zoom = 1 + Math.sin(frame * 0.008) * 0.04;
+            ctx.save();
+            ctx.translate(w / 2, h / 2);
+            ctx.scale(zoom, zoom);
+            ctx.translate(-w / 2, -h / 2);
+
+            // Draw Neon Glow Orbs
+            ctx.fillStyle = visualStyle === 'noir' ? 'rgba(255,255,255,0.06)' : 'rgba(6, 182, 212, 0.14)';
+            ctx.beginPath();
+            ctx.arc(w * 0.3, h * 0.45, 70, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = visualStyle === 'noir' ? 'rgba(255,255,255,0.04)' : 'rgba(244, 63, 94, 0.14)';
+            ctx.beginPath();
+            ctx.arc(w * 0.72, h * 0.38, 60, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw Buildings
+            buildings.forEach((b, idx) => {
+                const bx = (b.x / 580) * w;
+                const bw = (b.w / 580) * w;
+                const bh = (b.h / 320) * h;
+                const by = h - bh;
+
+                ctx.fillStyle = '#090d16';
+                ctx.fillRect(bx, by, bw, bh);
+
+                // Neon Roof Line
+                ctx.fillStyle = idx % 2 === 0 ? '#06b6d4' : '#ec4899';
+                if (visualStyle === 'noir') ctx.fillStyle = '#a1a1aa';
+                ctx.fillRect(bx, by, bw, 3);
+
+                // Glowing Windows
+                ctx.fillStyle = idx % 2 === 0 ? '#f59e0b' : '#22d3ee';
+                if (visualStyle === 'noir') ctx.fillStyle = '#e4e4e7';
+                for (let wy = by + 14; wy < h - 20; wy += 18) {
+                    if ((wy + idx) % 3 !== 0) {
+                        ctx.fillRect(bx + 8, wy, 6, 8);
+                        if (bw > 35) ctx.fillRect(bx + 20, wy, 6, 8);
+                    }
+                }
+            });
+
+            ctx.restore();
+
+            // Draw Falling Neon Rain
+            ctx.strokeStyle = visualStyle === 'noir' ? 'rgba(255,255,255,0.25)' : 'rgba(34, 211, 238, 0.35)';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            raindrops.forEach(r => {
+                const rx = (r.x / 600) * w;
+                const ry = (r.y / 350) * h;
+                ctx.moveTo(rx, ry);
+                ctx.lineTo(rx - 2, ry + r.len);
+                if (isPlaying) {
+                    r.y += r.speed;
+                    if (r.y > 350) {
+                        r.y = -15;
+                        r.x = Math.random() * 600;
+                    }
+                }
+            });
+            ctx.stroke();
+
+            requestAnimationFrame(animateCanvas);
+        }
+    </script>
+</body>
+</html>
+```
