@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Sparkles
 } from 'lucide-react';
+import { PWAInstallButton, OfflineIndicator } from './PWAInstallButton';
 
 interface SplashLandingProps {
   onStartNewScene: () => void;
@@ -26,6 +27,7 @@ export const SplashLanding: React.FC<SplashLandingProps> = ({
 
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col justify-between relative overflow-hidden">
+      <OfflineIndicator />
       {/* Subtle Ambient Studio Glow */}
       <div
         aria-hidden="true"
@@ -93,7 +95,7 @@ export const SplashLanding: React.FC<SplashLandingProps> = ({
           </div>
 
           {/* Primary Call-To-Action Block matching Poster Button */}
-          <div className="flex flex-wrap items-center gap-4 pt-1">
+          <div className="flex flex-wrap items-center gap-3.5 pt-1">
             <button
               type="button"
               onClick={onStartNewScene}
@@ -114,6 +116,8 @@ export const SplashLanding: React.FC<SplashLandingProps> = ({
             >
               Resume Studio ({sceneCount} Scenes · {castCount} Cast)
             </button>
+
+            <PWAInstallButton variant="hero" />
           </div>
 
           {/* Editorial Numbered Studio Workflow Pillars */}

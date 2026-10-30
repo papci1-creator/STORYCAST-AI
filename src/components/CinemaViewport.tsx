@@ -8,7 +8,15 @@ import {
   Grid,
   Copy,
   Trash2,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Film,
+  Sparkles,
+  Download,
+  Upload,
+  Maximize2,
+  Loader2,
+  FastForward,
+  Eye
 } from 'lucide-react';
 import { CastMember, SceneShot, VisualStyle } from '../types/studio';
 
@@ -22,6 +30,8 @@ interface CinemaViewportProps {
   activeSpeaker: string | null;
   activeSubtitle: string | null;
   isTableReading: boolean;
+  isGeneratingVideo: boolean;
+  videoProgress: number;
   onSelectScene: (idx: number) => void;
   onAddScene: () => void;
   onDuplicateScene: (idx: number) => void;
@@ -32,6 +42,9 @@ interface CinemaViewportProps {
   onChangeStyle: (style: VisualStyle) => void;
   onChangeCamera: (camera: string) => void;
   onToggleTableRead: () => void;
+  onGenerateVeoVideo: (extend?: boolean) => void;
+  onUpdateSceneVideoConfig: (patch: Partial<SceneShot>) => void;
+  onUploadSceneVideo: (url: string) => void;
 }
 
 const CAMERA_PRESETS = [
@@ -60,6 +73,8 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
   activeSpeaker,
   activeSubtitle,
   isTableReading,
+  isGeneratingVideo,
+  videoProgress,
   onSelectScene,
   onAddScene,
   onDuplicateScene,
@@ -69,14 +84,43 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
   onToggleAspect,
   onChangeStyle,
   onChangeCamera,
-  onToggleTableRead
+  onToggleTableRead,
+  onGenerateVeoVideo,
+  onUpdateSceneVideoConfig,
+  onUploadSceneVideo
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const frameRef = useRef<number>(0);
+
+  const [viewportMode, setViewportMode] = useState<'video' | 'canvas'>('canvas');
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [timecodeFrames, setTimecodeFrames] = useState<number>(0);
 
+  // HTML5 Video Player state
+  const [videoCurrentTime, setVideoCurrentTime] = useState<number>(0);
+  const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [playbackRate, setPlaybackRate] = useState<number>(1.0);
+
   const activeScene = scenes[currentSceneIndex] || scenes[0];
+
+  // Automatically switch to 'video' player tab whenever the active scene has a generated videoUrl
+  useEffect(() => {
+    if (activeScene.videoUrl) {
+      setViewportMode('video');
+    }
+  }, [activeScene.videoUrl, activeScene.id]);
+
+  // Sync HTML5 <video> play/pause with studio isPlaying state
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid || viewportMode !== 'video' || !activeScene.videoUrl) return;
+    if (isPlaying) {
+      vid.play().catch(() => {});
+    } else {
+      vid.pause();
+    }
+  }, [isPlaying, viewportMode, activeScene.videoUrl]);
 
   // Detect which characters are tagged in the current scene's script
   const taggedCharacters = cast.filter((c) => {
@@ -149,7 +193,6 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
         grad.addColorStop(0.55, '#311042');
         grad.addColorStop(1, '#581c5c');
       } else {
-        // chiaroscuro
         grad.addColorStop(0, '#070504');
         grad.addColorStop(0.65, '#1c1208');
         grad.addColorStop(1, '#36210c');
@@ -157,7 +200,7 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
 
-      // 2. Camera movement transform based on camera directive
+      // 2. Camera movement transform
       ctx.save();
       const cam = activeScene.camera.toLowerCase();
       let zoom = 1 + Math.sin(f * 0.008) * 0.045;
@@ -215,14 +258,12 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
         ctx.fillStyle = '#070a12';
         ctx.fillRect(bx, by, bw, bh);
 
-        // Roof edge trim
         let roofColor = idx % 2 === 0 ? '#06b6d4' : '#ec4899';
         if (style === 'noir') roofColor = '#a1a1aa';
         if (style === 'chiaroscuro') roofColor = '#f59e0b';
         ctx.fillStyle = roofColor;
         ctx.fillRect(bx, by, bw, 2.5);
 
-        // Windows
         let winColor = idx % 2 === 0 ? 'rgba(245, 158, 11, 0.75)' : 'rgba(34, 211, 238, 0.75)';
         if (style === 'noir') winColor = 'rgba(228, 228, 231, 0.65)';
         if (style === 'chiaroscuro') winColor = 'rgba(251, 191, 36, 0.7)';
@@ -237,7 +278,7 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
         }
       });
 
-      // 5. Wet Asphalt Ground Plane & Anamorphic Reflections
+      // 5. Wet Asphalt Ground Plane
       const groundY = h * 0.86;
       ctx.fillStyle = '#05070e';
       ctx.fillRect(0, groundY, w, h - groundY);
@@ -260,7 +301,6 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
         const isSpeakingNow =
           activeSpeaker && activeSpeaker.toLowerCase().includes(char.name.toLowerCase());
 
-        // Ground reflection streak
         ctx.fillStyle = rimColor;
         ctx.globalAlpha = isSpeakingNow ? 0.35 : 0.16;
         ctx.beginPath();
@@ -268,12 +308,10 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
         ctx.fill();
         ctx.globalAlpha = 1;
 
-        // Character silhouette body + rim light
         ctx.fillStyle = '#090d16';
         ctx.strokeStyle = rimColor;
         ctx.lineWidth = isSpeakingNow ? 2.4 : 1.5;
 
-        // Trench / Torso
         ctx.beginPath();
         ctx.moveTo(cx - 14, cy);
         ctx.lineTo(cx - 10, cy - 42);
@@ -283,13 +321,11 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
         ctx.fill();
         ctx.stroke();
 
-        // Head
         ctx.beginPath();
         ctx.arc(cx, cy - 52, 8.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
 
-        // Character Blocking Callout Label
         ctx.font = '500 10px "IBM Plex Mono", monospace';
         ctx.fillStyle = isSpeakingNow ? '#ffffff' : rimColor;
         ctx.textAlign = 'center';
@@ -322,24 +358,21 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
       });
       ctx.stroke();
 
-      // 8. Optional Rule-of-Thirds & Directorial Crosshair Grid
+      // 8. Optional Rule-of-Thirds Grid
       if (showGrid) {
         ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        // Vertical thirds
         ctx.moveTo(w / 3, 0);
         ctx.lineTo(w / 3, h);
         ctx.moveTo((w * 2) / 3, 0);
         ctx.lineTo((w * 2) / 3, h);
-        // Horizontal thirds
         ctx.moveTo(0, h / 3);
         ctx.lineTo(w, h / 3);
         ctx.moveTo(0, (h * 2) / 3);
         ctx.lineTo(w, (h * 2) / 3);
         ctx.stroke();
 
-        // Center Crosshair
         ctx.strokeStyle = 'rgba(34, 211, 238, 0.28)';
         ctx.beginPath();
         ctx.moveTo(w / 2 - 8, h / 2);
@@ -359,7 +392,6 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
     };
   }, [activeScene, isPlaying, showGrid, taggedCharacters, cast, activeSpeaker]);
 
-  // Format SMPTE timecode 00:00:SS:FF
   const formatTimecode = (frames: number) => {
     const totalSeconds = Math.floor(frames / 24) % Math.max(1, activeScene.durationSec);
     const ff = frames % 24;
@@ -369,9 +401,33 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
     return `00:${pad(mm)}:${pad(ss)}:${pad(ff)}`;
   };
 
+  const handleVideoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    onUploadSceneVideo(url);
+    setViewportMode('video');
+  };
+
+  const handleCyclePlaybackRate = () => {
+    const rates = [0.5, 1.0, 1.5, 2.0];
+    const nextRate = rates[(rates.indexOf(playbackRate) + 1) % rates.length];
+    setPlaybackRate(nextRate);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = nextRate;
+    }
+  };
+
+  const handleFullscreen = () => {
+    const vid = videoRef.current;
+    if (vid && vid.requestFullscreen) {
+      vid.requestFullscreen().catch(() => {});
+    }
+  };
+
   return (
     <section className="bg-[#0d1322] border border-slate-800/90 rounded-2xl p-5 flex flex-col gap-4">
-      {/* Scene Title & Metadata Header (Zero-Pill Unboxed Metadata) */}
+      {/* Scene Title & Mode Switcher Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
         <div>
           <div className="text-xs font-mono text-cyan-400 tabular-nums">
@@ -381,14 +437,122 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
             Scene {currentSceneIndex + 1}: {activeScene.title}
           </h2>
         </div>
-        <div className="flex items-center gap-2 text-xs font-mono text-slate-400 tabular-nums">
-          <span>{activeScene.lens}</span>
-          <span aria-hidden="true">·</span>
-          <span>~{activeScene.durationSec}s est</span>
+
+        {/* Mode Switcher: Realistic Video Player vs Live Blocking Viewfinder */}
+        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <button
+            type="button"
+            onClick={() => setViewportMode('video')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 ${
+              viewportMode === 'video'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Film className="w-3.5 h-3.5" />
+            <span>Video Player</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewportMode('canvas')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 ${
+              viewportMode === 'canvas'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Blocking View</span>
+          </button>
         </div>
       </div>
 
-      {/* Streamlined Camera & Style Controls Bar */}
+      {/* Veo 3 Realistic Video Generation Controls Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-950/90 p-2.5 rounded-xl border border-cyan-500/30 text-xs">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="font-mono text-[11px] uppercase text-amber-400 font-semibold px-1">
+            Veo 3 Engine
+          </span>
+
+          <select
+            aria-label="Video Resolution"
+            value={activeScene.videoResolution || '720p'}
+            onChange={(e) =>
+              onUpdateSceneVideoConfig({
+                videoResolution: e.target.value as '720p' | '1080p'
+              })
+            }
+            className="bg-slate-900 text-slate-200 border border-slate-700/80 rounded-lg px-2 py-1 text-[11px] font-mono focus:outline-none focus:border-cyan-500"
+          >
+            <option value="720p">720p HD</option>
+            <option value="1080p">1080p Full HD</option>
+          </select>
+
+          <select
+            aria-label="Video Duration"
+            value={activeScene.videoClipDuration || '5s'}
+            onChange={(e) =>
+              onUpdateSceneVideoConfig({
+                videoClipDuration: e.target.value as '5s' | '10s'
+              })
+            }
+            className="bg-slate-900 text-slate-200 border border-slate-700/80 rounded-lg px-2 py-1 text-[11px] font-mono focus:outline-none focus:border-cyan-500"
+          >
+            <option value="5s">5s Clip</option>
+            <option value="10s">10s Clip</option>
+          </select>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            disabled={isGeneratingVideo}
+            onClick={() => onGenerateVeoVideo(false)}
+            className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-400 to-amber-400 hover:opacity-95 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition active:scale-95 whitespace-nowrap shrink-0 disabled:opacity-60"
+          >
+            {isGeneratingVideo ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Rendering {videoProgress}%</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Render Realistic Video</span>
+              </>
+            )}
+          </button>
+
+          {activeScene.videoUrl && (
+            <button
+              type="button"
+              disabled={isGeneratingVideo}
+              onClick={() => onGenerateVeoVideo(true)}
+              title="Extend video clip by +5s"
+              className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-cyan-300 font-mono text-[11px] flex items-center gap-1 transition whitespace-nowrap shrink-0"
+            >
+              <FastForward className="w-3 h-3" />
+              <span>+5s Extend</span>
+            </button>
+          )}
+
+          <label
+            title="Upload custom MP4/WebM video for this scene"
+            className="cursor-pointer px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[11px] flex items-center gap-1 transition whitespace-nowrap shrink-0"
+          >
+            <Upload className="w-3 h-3 text-cyan-400" />
+            <span>Load MP4</span>
+            <input
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={handleVideoFileUpload}
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* Camera & Style Controls Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-950/90 p-2 rounded-xl border border-slate-800/90 text-xs">
         <div className="flex flex-wrap items-center gap-1.5">
           <select
@@ -418,19 +582,21 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setShowGrid(!showGrid)}
-            title="Toggle Rule-of-Thirds Viewfinder Grid"
-            className={`px-2 py-1.5 rounded-lg border font-mono transition whitespace-nowrap shrink-0 flex items-center gap-1 ${
-              showGrid
-                ? 'bg-slate-800 border-slate-600 text-cyan-300'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Grid className="w-3.5 h-3.5" />
-            <span>Grid</span>
-          </button>
+          {viewportMode === 'canvas' && (
+            <button
+              type="button"
+              onClick={() => setShowGrid(!showGrid)}
+              title="Toggle Rule-of-Thirds Viewfinder Grid"
+              className={`px-2 py-1.5 rounded-lg border font-mono transition whitespace-nowrap shrink-0 flex items-center gap-1 ${
+                showGrid
+                  ? 'bg-slate-800 border-slate-600 text-cyan-300'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Grid className="w-3.5 h-3.5" />
+              <span>Grid</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -454,69 +620,203 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
         </div>
       </div>
 
-      {/* Interactive Canvas Video Player */}
+      {/* MAIN VIEWPORT: REALISTIC HTML5 VIDEO PLAYER OR INTERACTIVE BLOCKING CANVAS */}
       <div
         className={`relative w-full bg-slate-950 rounded-xl overflow-hidden border border-slate-800 group transition-all duration-200 ${
           isWidescreen ? 'aspect-[2.39/1]' : 'aspect-video'
         }`}
       >
-        <canvas ref={canvasRef} className="w-full h-full block" />
+        {viewportMode === 'video' && activeScene.videoUrl ? (
+          <div className="w-full h-full flex flex-col justify-between relative bg-black">
+            <video
+              ref={videoRef}
+              src={activeScene.videoUrl}
+              loop={isLooping}
+              playsInline
+              autoPlay
+              onTimeUpdate={(e) => setVideoCurrentTime(e.currentTarget.currentTime)}
+              onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration || 3)}
+              onClick={onTogglePlay}
+              className="w-full h-full object-cover cursor-pointer"
+            />
 
-        {/* Top Viewfinder HUD Overlay (Unboxed Telemetry) */}
-        <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none text-[11px] font-mono tabular-nums">
-          <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-md text-cyan-300">
-            {activeScene.camera}
+            {/* Top Source Badge */}
+            <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none text-[11px] font-mono tabular-nums">
+              <div className="bg-slate-950/85 backdrop-blur-md border border-cyan-500/40 px-2.5 py-1 rounded-md text-cyan-300">
+                {activeScene.videoSource || 'Veo 3 Realistic Render'} ·{' '}
+                {activeScene.videoResolution || '720p'}
+              </div>
+              <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-md text-slate-300">
+                {videoCurrentTime.toFixed(1)}s / {(videoDuration || 3.0).toFixed(1)}s
+              </div>
+            </div>
+
+            {/* Bottom Dedicated HTML5 Video Player Controls Bar */}
+            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/95 via-black/75 to-transparent p-3 pt-6 flex flex-col gap-2">
+              {activeSubtitle && (
+                <div className="text-center pb-1">
+                  <span className="text-[10px] font-mono uppercase text-cyan-400">
+                    {activeSpeaker}:{' '}
+                  </span>
+                  <span className="text-xs text-white font-medium">“{activeSubtitle}”</span>
+                </div>
+              )}
+
+              {/* Interactive Timeline Scrubber */}
+              <input
+                type="range"
+                min={0}
+                max={Math.max(0.1, videoDuration || 3)}
+                step={0.05}
+                value={videoCurrentTime}
+                onChange={(e) => {
+                  const t = parseFloat(e.target.value);
+                  setVideoCurrentTime(t);
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = t;
+                  }
+                }}
+                aria-label="Video playback scrubber"
+                className="w-full h-1.5 accent-cyan-400 cursor-pointer"
+              />
+
+              <div className="flex items-center justify-between gap-2 text-xs font-mono">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onTogglePlay}
+                    className="p-1.5 rounded-lg bg-cyan-500 text-slate-950 hover:bg-cyan-400 transition"
+                  >
+                    {isPlaying ? (
+                      <Pause className="w-3.5 h-3.5 fill-current" />
+                    ) : (
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCyclePlaybackRate}
+                    className="px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-300 hover:text-white text-[11px] tabular-nums"
+                  >
+                    {playbackRate.toFixed(1)}x
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <a
+                    href={activeScene.videoUrl}
+                    download={`storycast-scene-${currentSceneIndex + 1}.webm`}
+                    className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-amber-300 flex items-center gap-1 text-[11px]"
+                  >
+                    <Download className="w-3 h-3" />
+                    <span>Save Video</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={handleFullscreen}
+                    title="Fullscreen Video Player"
+                    className="p-1.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-md text-slate-300">
-            TC {formatTimecode(timecodeFrames)} · 24fps
-          </div>
-        </div>
-
-        {/* Center Play/Pause Button */}
-        <button
-          type="button"
-          onClick={onTogglePlay}
-          aria-label={isPlaying ? 'Pause scene preview' : 'Play scene preview'}
-          className="absolute inset-0 m-auto w-13 h-13 rounded-full bg-cyan-500/90 hover:bg-cyan-400 text-slate-950 flex items-center justify-center shadow-lg transition transform hover:scale-105 active:scale-95 opacity-90 group-hover:opacity-100"
-        >
-          {isPlaying ? (
-            <Pause className="w-5 h-5 fill-current" />
-          ) : (
-            <Play className="w-5 h-5 fill-current ml-0.5" />
-          )}
-        </button>
-
-        {/* Bottom Scrim + Live Table Read Subtitle or Blocking Summary */}
-        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent p-3 pt-8 pointer-events-none flex items-end justify-between gap-3">
-          {activeSubtitle ? (
-            <div className="w-full text-center">
-              <span className="text-[11px] font-mono uppercase text-cyan-400 block">
-                {activeSpeaker}
-              </span>
-              <p className="text-xs sm:text-sm text-white font-medium leading-snug drop-shadow">
-                “{activeSubtitle}”
+        ) : viewportMode === 'video' && !activeScene.videoUrl ? (
+          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-slate-950 gap-3">
+            <Film className="w-9 h-9 text-cyan-400" />
+            <div>
+              <div className="text-sm font-bold text-white">
+                No Rendered Video Clip for Scene {currentSceneIndex + 1} Yet
+              </div>
+              <p className="text-xs text-slate-400 max-w-xs mt-1">
+                Click <strong className="text-cyan-300">Render Realistic Video</strong> above to
+                generate a playable video clip from your screenplay and camera blocking.
               </p>
             </div>
-          ) : (
-            <div className="flex flex-wrap items-center justify-between w-full text-[11px] text-slate-300 font-mono gap-2">
-              <span className="truncate max-w-[65%]">
-                Cast in Shot:{' '}
-                {taggedCharacters.length > 0
-                  ? taggedCharacters.map((c) => `@${c.name}`).join(' · ')
-                  : 'Environment Master'}
-              </span>
-              <span className="text-slate-400 tabular-nums">
-                Tension {activeScene.tensionLevel}%
-              </span>
+            <button
+              type="button"
+              disabled={isGeneratingVideo}
+              onClick={() => onGenerateVeoVideo(false)}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-amber-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition"
+            >
+              {isGeneratingVideo ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Rendering Video ({videoProgress}%)...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Render Scene Video Now</span>
+                </>
+              )}
+            </button>
+          </div>
+        ) : (
+          <>
+            <canvas ref={canvasRef} className="w-full h-full block" />
+
+            {/* Top Viewfinder HUD Overlay */}
+            <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none text-[11px] font-mono tabular-nums">
+              <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-md text-cyan-300">
+                {activeScene.camera}
+              </div>
+              <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-md text-slate-300">
+                TC {formatTimecode(timecodeFrames)} · 24fps
+              </div>
             </div>
-          )}
-        </div>
+
+            {/* Center Play/Pause Button */}
+            <button
+              type="button"
+              onClick={onTogglePlay}
+              aria-label={isPlaying ? 'Pause scene preview' : 'Play scene preview'}
+              className="absolute inset-0 m-auto w-13 h-13 rounded-full bg-cyan-500/90 hover:bg-cyan-400 text-slate-950 flex items-center justify-center shadow-lg transition transform hover:scale-105 active:scale-95 opacity-90 group-hover:opacity-100"
+            >
+              {isPlaying ? (
+                <Pause className="w-5 h-5 fill-current" />
+              ) : (
+                <Play className="w-5 h-5 fill-current ml-0.5" />
+              )}
+            </button>
+
+            {/* Bottom Scrim + Live Table Read Subtitle */}
+            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent p-3 pt-8 pointer-events-none flex items-end justify-between gap-3">
+              {activeSubtitle ? (
+                <div className="w-full text-center">
+                  <span className="text-[11px] font-mono uppercase text-cyan-400 block">
+                    {activeSpeaker}
+                  </span>
+                  <p className="text-xs sm:text-sm text-white font-medium leading-snug drop-shadow">
+                    “{activeSubtitle}”
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between w-full text-[11px] text-slate-300 font-mono gap-2">
+                  <span className="truncate max-w-[65%]">
+                    Cast in Shot:{' '}
+                    {taggedCharacters.length > 0
+                      ? taggedCharacters.map((c) => `@${c.name}`).join(' · ')
+                      : 'Environment Master'}
+                  </span>
+                  <span className="text-slate-400 tabular-nums">
+                    Tension {activeScene.tensionLevel}%
+                  </span>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Live Dialogue Table Read Action Strip */}
       <div className="flex items-center justify-between gap-3 bg-slate-950/70 border border-slate-800/80 rounded-xl px-3.5 py-2.5">
         <div className="text-xs">
-          <span className="font-medium text-slate-200">Scene Table Read & Voice Sync</span>
+          <span className="font-medium text-slate-200">Scene Table Read &amp; Voice Sync</span>
           <span className="text-slate-400 block text-[11px]">
             Synthesizes character lines using unlocked Cast Voice profiles
           </span>
@@ -585,7 +885,8 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
                       active ? 'text-cyan-400 font-semibold' : 'text-slate-500'
                     }`}
                   >
-                    Shot {String(idx + 1).padStart(2, '0')} · {scene.durationSec}s
+                    Shot {String(idx + 1).padStart(2, '0')} ·{' '}
+                    {scene.videoUrl ? 'VIDEO READY' : `${scene.durationSec}s`}
                   </span>
                   <div className="flex items-center gap-1">
                     <button

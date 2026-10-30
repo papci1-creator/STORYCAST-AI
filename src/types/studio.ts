@@ -46,6 +46,11 @@ export interface SceneShot {
   durationSec: number;
   tensionLevel: number;
   style: VisualStyle;
+  videoUrl?: string;
+  videoSource?: string;
+  videoResolution?: '720p' | '1080p';
+  videoClipDuration?: '5s' | '10s';
+  lastInteractionId?: string;
 }
 
 export interface StoryBeat {
