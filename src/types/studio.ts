@@ -2,7 +2,12 @@ export type CharacterRole = 'PROT' | 'ANTA' | 'SIDE' | 'SUPP';
 
 export type CharacterColor = 'orange' | 'cyan' | 'pink' | 'amber' | 'emerald';
 
-export type VisualStyle = 'cyberpunk' | 'noir' | 'anime' | 'chiaroscuro';
+export type VisualStyle = 'orchard' | 'cyberpunk' | 'noir' | 'anime' | 'chiaroscuro';
+
+export type VideoEngineModel =
+  | 'fal-ai/veo3'
+  | 'fal-ai/kling-video/v2/master/image-to-video'
+  | 'fal-ai/runway-gen4';
 
 export interface CastMember {
   id: string;
@@ -13,6 +18,7 @@ export interface CastMember {
   facePrompt: string;
   avatarUrl: string;
   voiceModel: string;
+  voiceId?: string;
   voiceStyle: string;
   pitch: number;
   speed: number;
@@ -46,6 +52,9 @@ export interface SceneShot {
   durationSec: number;
   tensionLevel: number;
   style: VisualStyle;
+  prompt?: string;
+  dialogue?: string;
+  speaker?: string;
   videoUrl?: string;
   videoSource?: string;
   videoResolution?: '720p' | '1080p';

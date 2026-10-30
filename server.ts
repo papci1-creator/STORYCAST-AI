@@ -1,143 +1,182 @@
-import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI } from '@google/genai';
+import dotenv from 'dotenv';
+import { GoogleGenAI, Type } from '@google/genai';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = 3000;
-
-function getGenAIClient(): GoogleGenAI {
-  return new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build'
-      }
-    }
-  });
-}
-
 async function startServer() {
   const app = express();
+  const PORT = 3000;
+
   app.use(express.json({ limit: '25mb' }));
 
-  // POST /api/video/generate — Generates or extends a realistic scene video via gemini-omni-1.1-flash
+  // POST /api/storyboard/breakdown - Breaks a screenplay into a 3-shot camera storyboard using Gemini 2.5 Flash
+  app.post('/api/storyboard/breakdown', async (req, res) => {
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
+        res.status(503).json({
+          error: 'GEMINI_API_KEY not configured on server',
+          fallback: true
+        });
+        return;
+      }
+
+      const { scriptText, cast } = req.body as {
+        scriptText?: string;
+        cast?: Array<{ name: string; role: string; facePrompt: string }>;
+      };
+
+      if (!scriptText || !scriptText.trim()) {
+        res.status(400).json({ error: 'Missing scriptText' });
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const castContext = Array.isArray(cast)
+        ? cast.map((c) => `@${c.name} (${c.role}): ${c.facePrompt}`).join('\n')
+        : '';
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Break this screenplay into 3 cinematic video generation shots. Preserve @Character handles in prompts where applicable.\n\nCast Profiles:\n${castContext}\n\nScreenplay:\n${scriptText}`,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                camera: { type: Type.STRING },
+                prompt: { type: Type.STRING },
+                dialogue: { type: Type.STRING },
+                speaker: { type: Type.STRING }
+              },
+              required: ['title', 'camera', 'prompt', 'dialogue', 'speaker']
+            }
+          }
+        }
+      });
+
+      const rawText = response.text || '[]';
+      const shots = JSON.parse(rawText);
+      res.json({ shots });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Storyboard breakdown error';
+      res.status(500).json({
+        error: message,
+        fallback: true
+      });
+    }
+  });
+
+  // POST /api/video/generate - Generates or extends a realistic scene video using Veo / Omni Flash
   app.post('/api/video/generate', async (req, res) => {
     try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
+        res.status(503).json({
+          error: 'GEMINI_API_KEY not configured on server',
+          fallback: true
+        });
+        return;
+      }
+
       const {
         prompt,
         aspectRatio = '16:9',
         duration = '5s',
         resolution = '720p',
         previousInteractionId
-      } = req.body || {};
-
-      if (!prompt || typeof prompt !== 'string') {
-        res.status(400).json({ error: 'A scene prompt is required for video generation.' });
-        return;
-      }
-
-      if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'MY_GEMINI_API_KEY') {
-        res.status(403).json({
-          error:
-            'Paid API key not configured. Using local Studio Cinema Renderer fallback, or select a paid API key in Settings > Secrets.',
-          code: 'PAID_KEY_REQUIRED'
-        });
-        return;
-      }
-
-      const ai = getGenAIClient();
-
-      const validAspect = aspectRatio === '9:16' ? '9:16' : '16:9';
-      const validDuration = duration === '10s' ? '10s' : '5s';
-      const validResolution = ['360p', '720p', '1080p', '4k'].includes(resolution)
-        ? resolution
-        : '720p';
-
-      const interactionParams: Record<string, unknown> = {
-        model: 'gemini-omni-1.1-flash',
-        input: prompt,
-        background: false,
-        store: true,
-        stream: false,
-        response_format: {
-          type: 'video',
-          aspect_ratio: validAspect,
-          duration: validDuration,
-          resolution: validResolution
-        }
+      } = req.body as {
+        prompt: string;
+        aspectRatio?: '16:9' | '9:16';
+        duration?: '5s' | '10s';
+        resolution?: '720p' | '1080p';
+        previousInteractionId?: string;
       };
 
-      if (previousInteractionId) {
-        interactionParams.previous_interaction_id = previousInteractionId;
+      if (!prompt || typeof prompt !== 'string') {
+        res.status(400).json({ error: 'Missing video prompt' });
+        return;
       }
 
-      const interaction = await ai.interactions.create(
-        interactionParams as unknown as Parameters<typeof ai.interactions.create>[0],
-        { timeout: 300000 }
-      );
+      const ai = new GoogleGenAI({ apiKey });
 
-      const videoPart = interaction.output_video;
-      if (videoPart?.data) {
-        const mimeType = videoPart.mime_type || 'video/mp4';
-        res.json({
-          videoDataUrl: `data:${mimeType};base64,${videoPart.data}`,
-          mimeType,
-          interactionId: interaction.id,
-          source: 'Veo 3 (Omni Flash)'
+      const interaction = await ai.interactions.create({
+        model: 'gemini-omni-1.1-flash',
+        input: prompt,
+        ...(previousInteractionId ? { previous_interaction_id: previousInteractionId } : {}),
+        response_format: {
+          type: 'video',
+          aspect_ratio: aspectRatio === '9:16' ? '9:16' : '16:9',
+          duration: duration === '10s' ? '10s' : '5s',
+          resolution: resolution === '1080p' ? '1080p' : '720p'
+        }
+      });
+
+      let videoBase64: string | null = null;
+      let mimeType = 'video/mp4';
+
+      const outputs = (interaction as unknown as {
+        outputs?: Array<{ type: string; data?: string; mime_type?: string }>;
+      }).outputs;
+
+      if (Array.isArray(outputs)) {
+        for (const output of outputs) {
+          if (output.type === 'video' && output.data) {
+            videoBase64 = output.data;
+            if (output.mime_type) mimeType = output.mime_type;
+            break;
+          }
+        }
+      }
+
+      if (!videoBase64) {
+        res.status(502).json({
+          error: 'No video output returned from model',
+          fallback: true
         });
         return;
       }
 
-      if (videoPart?.uri) {
-        res.json({
-          videoDataUrl: videoPart.uri,
-          mimeType: videoPart.mime_type || 'video/mp4',
-          interactionId: interaction.id,
-          source: 'Veo 3 (Omni Flash)'
-        });
-        return;
-      }
-
-      res.status(502).json({
-        error: 'Model completed without returning video bytes.',
-        code: 'EMPTY_VIDEO_OUTPUT'
+      res.json({
+        interactionId: (interaction as unknown as { id?: string }).id || null,
+        videoDataUrl: `data:${mimeType};base64,${videoBase64}`,
+        mimeType
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      const status =
-        message.includes('403') || message.includes('PERMISSION_DENIED')
-          ? 403
-          : message.includes('429') || message.includes('RESOURCE_EXHAUSTED')
-          ? 429
-          : 500;
-      res.status(status).json({
+      const message = err instanceof Error ? err.message : 'Video generation error';
+      res.status(500).json({
         error: message,
-        code: status === 403 || status === 429 ? 'PAID_KEY_REQUIRED' : 'GENERATION_ERROR'
+        fallback: true
       });
     }
   });
 
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa'
-    });
-    app.use(vite.middlewares);
-  } else {
+  if (process.env.NODE_ENV === 'production') {
     const distPath = path.resolve(__dirname, 'dist');
     app.use(express.static(distPath));
     app.get('*', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
+  } else {
+    const { createServer: createViteServer } = await import('vite');
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa'
+    });
+    app.use(vite.middlewares);
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`STORYCAST AI server listening on http://0.0.0.0:${PORT}`);
+    console.log(`STORYCAST Studio Server listening on http://0.0.0.0:${PORT}`);
   });
 }
 

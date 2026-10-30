@@ -1,7 +1,15 @@
 import { CastMember, SceneShot, StoryBeat, AudioTrackMix } from '../types/studio';
 
-// Self-contained SVG portraits (zero external network dependency)
+// Self-contained SVG & portrait presets
 export const PRESET_PORTRAITS: { label: string; url: string }[] = [
+  {
+    label: 'Marcus — Orchard Engineer',
+    url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=160&auto=format&fit=crop&q=80'
+  },
+  {
+    label: 'Arthur — Veteran Grower',
+    url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=160&auto=format&fit=crop&q=80'
+  },
   {
     label: 'Elena — Ocular Detective',
     url: `data:image/svg+xml;utf8,${encodeURIComponent(`
@@ -88,95 +96,55 @@ export const PRESET_PORTRAITS: { label: string; url: string }[] = [
         <line x1="66" y1="98" x2="94" y2="98" stroke="#f59e0b" stroke-width="2"/>
       </svg>
     `)}`
-  },
-  {
-    label: 'Kael — Orbital Courier',
-    url: `data:image/svg+xml;utf8,${encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
-        <rect width="160" height="160" fill="#06281e"/>
-        <path d="M28 160 C35 115 125 115 132 160 Z" fill="#0f172a" stroke="#10b981" stroke-width="2"/>
-        <ellipse cx="80" cy="76" rx="28" ry="33" fill="#334155"/>
-        <rect x="56" y="66" width="48" height="16" rx="8" fill="#064e3b" stroke="#34d399" stroke-width="2"/>
-        <circle cx="70" cy="74" r="3" fill="#6ee7b7"/>
-        <circle cx="90" cy="74" r="3" fill="#6ee7b7"/>
-        <path d="M72 94 L88 94" stroke="#a7f3d0" stroke-width="2"/>
-      </svg>
-    `)}`
-  },
-  {
-    label: 'Vesper — Noir Archivist',
-    url: `data:image/svg+xml;utf8,${encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
-        <rect width="160" height="160" fill="#111827"/>
-        <path d="M30 160 C38 118 122 118 130 160 Z" fill="#1f2937" stroke="#9ca3af" stroke-width="2"/>
-        <ellipse cx="80" cy="78" rx="26" ry="32" fill="#374151"/>
-        <polygon points="36,56 124,56 104,36 56,36" fill="#030712" stroke="#6b7280" stroke-width="1.5"/>
-        <circle cx="69" cy="76" r="3" fill="#f3f4f6"/>
-        <circle cx="91" cy="76" r="3" fill="#f3f4f6"/>
-        <path d="M74 94 Q80 92 86 94" stroke="#d1d5db" stroke-width="2" fill="none"/>
-      </svg>
-    `)}`
   }
 ];
 
 export const INITIAL_CAST: CastMember[] = [
   {
-    id: 'char-1',
-    name: 'Elena',
+    id: 'c1',
+    name: 'Marcus',
     role: 'PROT',
-    color: 'orange',
-    archetype: 'Cyber-Detective',
-    facePrompt: 'Sharp cybernetic ocular implant, rain-slicked trench coat, neon orange collar',
+    color: 'emerald',
+    archetype: 'Orchard Mechanic & Son',
+    facePrompt: 'Young Black man, short afro, tan Carhartt jacket, denim jeans',
     avatarUrl: PRESET_PORTRAITS[0].url,
-    voiceModel: 'Nova (Husky Alto)',
-    voiceStyle: 'Noir Gritty',
+    voiceModel: 'Josh (Warm Baritone)',
+    voiceId: 'TxGEqnHWrfWFTfGW9XjX',
+    voiceStyle: 'Grounded & Determined',
     pitch: 1.0,
     speed: 1.0,
     faceLocked: false,
     voiceLocked: false
   },
   {
-    id: 'char-2',
-    name: 'Leo',
+    id: 'c2',
+    name: 'Arthur',
     role: 'PROT',
-    color: 'cyan',
-    archetype: 'Netrunner',
-    facePrompt: 'Glowing cyan neural jack, silver tech-visor, street hoodie',
-    avatarUrl: PRESET_PORTRAITS[1].url,
-    voiceModel: 'Orion (Calm Tenor)',
-    voiceStyle: 'Fast & Analytical',
-    pitch: 1.1,
-    speed: 1.1,
-    faceLocked: false,
-    voiceLocked: false
-  },
-  {
-    id: 'char-3',
-    name: 'Aria',
-    role: 'SIDE',
-    color: 'pink',
-    archetype: 'AI Informant',
-    facePrompt: 'Holographic translucent skin, magenta bob haircut, geometric earrings',
-    avatarUrl: PRESET_PORTRAITS[2].url,
-    voiceModel: 'Lyra (Ethereal Synth)',
-    voiceStyle: 'Harmonic Echo',
-    pitch: 1.3,
-    speed: 1.0,
-    faceLocked: false,
-    voiceLocked: false
-  },
-  {
-    id: 'char-4',
-    name: 'Malakor',
-    role: 'ANTA',
     color: 'amber',
-    archetype: 'Syndicate Boss',
-    facePrompt: 'Chrome jaw prosthetic, tailored obsidian suit, golden cyber-eyes',
-    avatarUrl: PRESET_PORTRAITS[3].url,
-    voiceModel: 'Titan (Deep Gravel)',
-    voiceStyle: 'Commanding & Cold',
-    pitch: 0.7,
-    speed: 0.9,
+    archetype: 'Veteran Orchard Farmer',
+    facePrompt: 'Older weathered farmer, plaid flannel shirt, standing by tractor',
+    avatarUrl: PRESET_PORTRAITS[1].url,
+    voiceModel: 'Arnold (Gravelly Veteran)',
+    voiceId: 'VR6AewLTigWG4xSOukaG',
+    voiceStyle: 'Weathered & Dry Wit',
+    pitch: 0.9,
+    speed: 0.95,
+    faceLocked: false,
+    voiceLocked: false
+  },
+  {
+    id: 'char-1',
+    name: 'Elena',
+    role: 'SIDE',
+    color: 'orange',
+    archetype: 'City Agricultural Broker',
+    facePrompt: 'Sharp ocular glasses, tailored trench coat, leather ledger case',
+    avatarUrl: PRESET_PORTRAITS[2].url,
+    voiceModel: 'Bella (Expressive Lead)',
+    voiceId: 'EXAVITQu4vr4xnSDxMaL',
+    voiceStyle: 'Crisp & Analytical',
+    pitch: 1.05,
+    speed: 1.0,
     faceLocked: false,
     voiceLocked: false
   }
@@ -185,150 +153,144 @@ export const INITIAL_CAST: CastMember[] = [
 export const INITIAL_SCENES: SceneShot[] = [
   {
     id: 1,
-    title: 'Neon Rain on Lower Deck',
-    slugline: 'EXT. NEO-TOKYO SUBLEVEL 09 - NIGHT',
-    script: `EXT. NEO-TOKYO SUBLEVEL 09 - NIGHT
+    title: 'Shot 1: Wide Orchard Establishing',
+    slugline: 'EXT. APPLE ORCHARD - MORNING',
+    script: `[SCENE 1: EXT. APPLE ORCHARD - MORNING]
+Wide aerial shot of a misty farm harvest. Acoustic guitar music plays softly.
 
-The neon rain washes over the mirror-like pavement of Neo-Tokyo's lowest sublevel. Steam vents hiss through corroded iron grates.
+@Marcus stands beside a vintage Mercedes with the trunk open, wiping his hands with a shop rag. @Arthur stands next to a green tractor.
 
-@Elena crouches beside a shattered holographic kiosk, her ocular implant scanning the residual data trail.
-
-@Elena
-(low, guarded)
-"The signal is coming from beneath the reactor core. Stay sharp, @Leo."`,
-    camera: 'CAMERA: Slow Dolly In [1.0x]',
-    lens: '35mm Anamorphic · T2.0',
-    lighting: 'Cyan sodium vapor rim light against wet asphalt reflections',
-    foleyNote: 'Heavy rain on synth-leather, distant turbine thrum, ocular servo click',
-    durationSec: 45,
-    tensionLevel: 62,
-    style: 'cyberpunk'
+@Arthur: "You taking that heap? They judge an apple by how shiny the wax is, not the root."
+@Marcus: "The turbo's for hauling grain, Dad." [SFX: Heavy car trunk slams shut]
+@Arthur: "Then let 'em choke on the wax."`,
+    camera: 'CAMERA: Wide Aerial Drone Pan [0.8x]',
+    lens: '24mm Anamorphic · Golden Hour',
+    lighting: 'Misty golden sunrise filtering through apple orchard canopy',
+    foleyNote: 'Acoustic guitar chords, distant tractor diesel idle, morning birds',
+    durationSec: 36,
+    tensionLevel: 54,
+    style: 'orchard',
+    prompt:
+      'Wide establishing shot of a misty green farm orchard at sunrise, workers loading apple crates by a pickup truck',
+    dialogue:
+      'You taking that heap? They judge an apple by how shiny the wax is, not the root.',
+    speaker: 'Arthur'
   },
   {
     id: 2,
-    title: 'Alleyway Confrontation',
-    slugline: 'EXT. KOWLOON CONDUIT ALLEY - NIGHT',
-    script: `EXT. KOWLOON CONDUIT ALLEY - NIGHT
+    title: 'Shot 2: Medium Two-Shot by Tractor',
+    slugline: 'EXT. APPLE ORCHARD - TRACTOR BAY - MORNING',
+    script: `EXT. APPLE ORCHARD - TRACTOR BAY - MORNING
 
-High-contrast shadows slice across wet concrete. A matte-black spinner idles above the drainage canal, rotors chopping the mist.
+Morning sun glints off the chrome trim of the vintage beige Mercedes.
 
-@Elena steps out from the holographic shadows, hand resting near her sidearm. @Malakor waits beside the open gull-wing door, chrome jaw glinting amber.
+@Marcus wipes grease from his knuckles with a shop rag, slamming the heavy trunk lid shut while @Arthur leans against the green tractor wheel.
 
-@Malakor
-(cold, unhurried)
-"You're chasing a ghost that erased itself three cycles ago, Detective."
-
-@Elena
-(stepping into the light)
-"Ghosts don't leave encrypted ledger keys in Sector Four."`,
-    camera: 'CAMERA: Low Angle Pan [0.8x]',
+@Marcus: "The turbo's for hauling grain, Dad." [SFX: Heavy car trunk slams shut]`,
+    camera: 'CAMERA: Medium Two-Shot | 50mm Lens',
     lens: '50mm Prime · Shallow DOF',
-    lighting: 'Hard chiaroscuro key light from spinner headlamps',
-    foleyNote: 'Low turbine idle, puddles splashing under boots, metallic jaw click',
-    durationSec: 52,
-    tensionLevel: 84,
-    style: 'noir'
+    lighting: 'Warm backlight across Carhartt canvas and weathered flannel',
+    foleyNote: 'Shop rag rustle, heavy vintage Mercedes trunk latch slam',
+    durationSec: 42,
+    tensionLevel: 68,
+    style: 'orchard',
+    prompt:
+      'Medium shot of @Marcus in a tan Carhartt jacket wiping his hands by a vintage beige Mercedes trunk next to @Arthur in a plaid shirt by a green tractor',
+    dialogue: "The turbo's for hauling grain, Dad.",
+    speaker: 'Marcus'
   },
   {
     id: 3,
-    title: 'Skyline Data Heist',
-    slugline: 'INT. ARASAKA RELAY SPIRE - ROOFTOP LEDGE - NIGHT',
-    script: `INT. ARASAKA RELAY SPIRE - ROOFTOP LEDGE - NIGHT
+    title: 'Shot 3: Highway Departure Toward Skyline',
+    slugline: 'EXT. FARM DIRT ROAD TO HIGHWAY - MORNING',
+    script: `EXT. FARM DIRT ROAD TO HIGHWAY - MORNING
 
-Gale-force wind whips across the glass parapet 120 stories above the megacity grid.
+Dust rises in golden plumes behind the vintage beige Mercedes as @Marcus steers down the dirt farm lane through the open timber gates toward the distant city skyline.
 
-@Leo jacks his fiber-optic lead directly into the mainframe tower while @Aria materializes on his wrist projector, scanning drone patrol vectors overhead.
+@Arthur watches from the orchard ridge, hands in his flannel pockets.
 
-@Aria
-(urgent harmonic echo)
-"Two syndicate gunships banking around the west spire. Ninety seconds until firewall lockdown."
-
-@Leo
-(fingers flying across deck)
-"Seventy is all I need. Keep their radar blind, @Aria."`,
-    camera: 'CAMERA: Crane Orbit [1.2x]',
-    lens: '24mm Wide Anamorphic',
-    lighting: 'Magenta & electric cyan billboard pulse across rain-streaked glass',
-    foleyNote: 'High-altitude wind howl, fiber jack lock, rapid mechanical keystrokes',
-    durationSec: 38,
-    tensionLevel: 94,
-    style: 'anime'
+@Arthur: "Then let 'em choke on the wax."`,
+    camera: 'CAMERA: Low Angle Rear Tracking Shot',
+    lens: '35mm Anamorphic · T2.0',
+    lighting: 'Long morning shadows stretching toward the misty city horizon',
+    foleyNote: 'Turbocharger spooling, tires crunching gravel road, wind through orchard',
+    durationSec: 40,
+    tensionLevel: 76,
+    style: 'orchard',
+    prompt:
+      'Vintage beige Mercedes driving down a dirt farm road through open gates toward a distant city skyline in morning mist',
+    dialogue: "Then let 'em choke on the wax.",
+    speaker: 'Arthur'
   }
 ];
 
 export const INITIAL_BEATS: StoryBeat[] = [
   {
     id: 'beat-1',
-    act: 'ACT I · SETUP',
-    beatName: '01. The Ghost Signal in Sublevel 09',
-    sequenceSummary: '@Elena discovers an unauthorized neural broadcast leaking from a decommissioned cooling tower.',
-    visualMotif: 'Anamorphic cyan reflections in oil-slicked puddles',
-    subtextGoal: 'Establish Elena’s isolation and obsession with the unsolved blackout case.',
-    tension: 45
+    act: 'SHOT 01 · ESTABLISHING',
+    beatName: '01. Wide Orchard Establishing',
+    sequenceSummary:
+      'Wide aerial drone pan over the misty green farm orchard at sunrise as harvest crates are loaded and @Arthur questions @Marcus’s choice of car.',
+    visualMotif: 'Golden morning mist over green orchard rows and farm storage barn',
+    subtextGoal: 'Contrast generational pride in the root versus the city’s obsession with surface shine.',
+    tension: 54
   },
   {
     id: 'beat-2',
-    act: 'ACT I · INCITING INCIDENT',
-    beatName: '02. Extraction Pact with the Netrunner',
-    sequenceSummary: '@Elena corners @Leo in an underground arcade and trades immunity for his decryption rig.',
-    visualMotif: 'Flickering CRT scanlines across faces in tight close-up',
-    subtextGoal: 'Forced alliance between cynical lawman and distrustful street hacker.',
-    tension: 65
+    act: 'SHOT 02 · CONFRONTATION',
+    beatName: '02. Medium Two-Shot by Tractor',
+    sequenceSummary:
+      '@Marcus wipes his hands by the vintage beige Mercedes trunk next to @Arthur’s green tractor before slamming the trunk shut.',
+    visualMotif: '50mm shallow depth-of-field framing vintage steel against farm machinery',
+    subtextGoal: 'Marcus defends his own practical way of carrying the family harvest forward.',
+    tension: 68
   },
   {
     id: 'beat-3',
-    act: 'ACT II · RISING ACTION',
-    beatName: '03. Alleyway Ultimatum',
-    sequenceSummary: '@Malakor intercepts the pair, revealing the Syndicate owns the city’s memory grid.',
-    visualMotif: 'Low-angle Dutch framing with harsh amber spinner headlights',
-    subtextGoal: 'Shift stakes from a local data theft to city-wide cognitive erasure.',
-    tension: 82
-  },
-  {
-    id: 'beat-4',
-    act: 'ACT III · CLIMAX',
-    beatName: '04. Spire Mainframe Uplink',
-    sequenceSummary: '@Leo and @Aria breach the rooftop relay while @Elena holds the elevator atrium.',
-    visualMotif: 'Vertiginous crane orbit over Neo-Tokyo’s neon abyss',
-    subtextGoal: 'Total trust under countdown pressure; broadcasting the raw truth.',
-    tension: 96
+    act: 'SHOT 03 · DEPARTURE',
+    beatName: '03. Highway Departure Toward Skyline',
+    sequenceSummary:
+      'Low-angle rear tracking shot following the vintage Mercedes down the dirt road toward the distant city skyline in the morning mist.',
+    visualMotif: 'Dirt road perspective converging on distant city towers on the horizon',
+    subtextGoal: 'Arthur’s unspoken blessing disguised as gruff defiance.',
+    tension: 76
   }
 ];
 
 export const INITIAL_AUDIO_MIX: AudioTrackMix[] = [
   {
     id: 'track-rain',
-    name: 'Ambient Rain & Downpour Foley',
+    name: 'Morning Orchard Wind & Acoustic Guitar',
     category: 'Atmos Layer · Stereo Wide',
-    description: 'Continuous rain hitting wet asphalt, corrugated steel, and puddles',
-    volume: 75,
+    description: 'Soft acoustic harvest guitar with morning breeze through orchard leaves',
+    volume: 70,
     muted: false,
     synthType: 'rain'
   },
   {
     id: 'track-hum',
-    name: 'Sublevel Neon Transformer Hum',
-    category: 'Diegetic Drone · 60Hz Warmth',
-    description: 'Low-frequency electrical ballast buzz and distant ventilation turbines',
-    volume: 55,
+    name: 'Green Tractor & Vintage Turbo Idle',
+    category: 'Diegetic Engine · Low Warmth',
+    description: 'Low-frequency diesel tractor idle and vintage Mercedes exhaust resonance',
+    volume: 60,
     muted: false,
     synthType: 'hum'
   },
   {
     id: 'track-pulse',
-    name: 'Anamorphic Tension Sub-Pulse',
-    category: 'Score Stem · Analog CS-80',
-    description: 'Rhythmic sub-bass heartbeat synced to scene tension curve',
-    volume: 65,
+    name: 'Cinematic Departure Bass Swell',
+    category: 'Score Stem · Warm Analog',
+    description: 'Subtle rhythmic pulse synced to the highway departure sequence',
+    volume: 55,
     muted: false,
     synthType: 'pulse'
   },
   {
     id: 'track-foley',
-    name: 'Tactical Foley & Ocular Servos',
+    name: 'Trunk Slam & Gravel Tire Foley',
     category: 'Spot SFX · Center Channel',
-    description: 'Trench coat movement, terminal keystrokes, and cybernetic lens focus',
-    volume: 80,
+    description: 'Heavy car trunk latch slam, gravel crunching under tires, and shop rag movement',
+    volume: 85,
     muted: false,
     synthType: 'foley'
   }

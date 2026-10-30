@@ -18,7 +18,7 @@ import {
   FastForward,
   Eye
 } from 'lucide-react';
-import { CastMember, SceneShot, VisualStyle } from '../types/studio';
+import { CastMember, SceneShot, VideoEngineModel, VisualStyle } from '../types/studio';
 
 interface CinemaViewportProps {
   scenes: SceneShot[];
@@ -32,6 +32,8 @@ interface CinemaViewportProps {
   isTableReading: boolean;
   isGeneratingVideo: boolean;
   videoProgress: number;
+  selectedVideoEngine: VideoEngineModel;
+  onChangeVideoEngine: (engine: VideoEngineModel) => void;
   onSelectScene: (idx: number) => void;
   onAddScene: () => void;
   onDuplicateScene: (idx: number) => void;
@@ -48,10 +50,11 @@ interface CinemaViewportProps {
 }
 
 const CAMERA_PRESETS = [
+  'CAMERA: Wide Aerial Drone Pan [0.8x]',
+  'CAMERA: Medium Two-Shot | 50mm Lens',
+  'CAMERA: Low Angle Rear Tracking Shot',
   'CAMERA: Slow Dolly In [1.0x]',
-  'CAMERA: Low Angle Pan [0.8x]',
   'CAMERA: Crane Orbit [1.2x]',
-  'CAMERA: Steadicam Track [1.0x]',
   'CAMERA: Static Anamorphic Wide [1.0x]'
 ];
 
@@ -75,6 +78,8 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
   isTableReading,
   isGeneratingVideo,
   videoProgress,
+  selectedVideoEngine,
+  onChangeVideoEngine,
   onSelectScene,
   onAddScene,
   onDuplicateScene,
@@ -104,7 +109,7 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
 
   const activeScene = scenes[currentSceneIndex] || scenes[0];
 
-  // Automatically switch to 'video' player tab whenever the active scene has a generated videoUrl
+  // Switch to 'video' player tab whenever the active scene has a generated videoUrl
   useEffect(() => {
     if (activeScene.videoUrl) {
       setViewportMode('video');
@@ -180,7 +185,12 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
 
       // 1. Sky & Atmosphere Gradient
       const grad = ctx.createLinearGradient(0, 0, 0, h);
-      if (style === 'cyberpunk') {
+      if (style === 'orchard') {
+        grad.addColorStop(0, '#1e293b');
+        grad.addColorStop(0.55, '#fbbf24');
+        grad.addColorStop(0.6, '#14532d');
+        grad.addColorStop(1, '#052e16');
+      } else if (style === 'cyberpunk') {
         grad.addColorStop(0, '#040711');
         grad.addColorStop(0.55, '#0b1528');
         grad.addColorStop(1, '#17153b');
@@ -203,11 +213,11 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
       // 2. Camera movement transform
       ctx.save();
       const cam = activeScene.camera.toLowerCase();
-      let zoom = 1 + Math.sin(f * 0.008) * 0.045;
+      let zoom = 1 + Math.sin(f * 0.008) * 0.04;
       let panX = 0;
       let panY = 0;
 
-      if (cam.includes('pan')) {
+      if (cam.includes('pan') || cam.includes('aerial')) {
         panX = Math.sin(f * 0.01) * 18;
         zoom = 1.04;
       } else if (cam.includes('orbit') || cam.includes('crane')) {
@@ -224,139 +234,187 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
       ctx.scale(zoom, zoom);
       ctx.translate(-w / 2, -h / 2);
 
-      // 3. Volumetric Neon Haze Orbs
-      const orb1Color =
-        style === 'noir'
-          ? 'rgba(255,255,255,0.06)'
-          : style === 'chiaroscuro'
-          ? 'rgba(245, 158, 11, 0.16)'
-          : 'rgba(6, 182, 212, 0.15)';
-      const orb2Color =
-        style === 'noir'
-          ? 'rgba(255,255,255,0.04)'
-          : style === 'chiaroscuro'
-          ? 'rgba(217, 119, 6, 0.12)'
-          : 'rgba(236, 72, 153, 0.14)';
+      if (style === 'orchard') {
+        const horizonY = h * 0.55;
 
-      ctx.fillStyle = orb1Color;
-      ctx.beginPath();
-      ctx.arc(w * 0.28, h * 0.44, 78, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = orb2Color;
-      ctx.beginPath();
-      ctx.arc(w * 0.74, h * 0.36, 68, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 4. Skyline Architecture & Lit Windows
-      buildings.forEach((b, idx) => {
-        const bx = (b.x / 600) * w;
-        const bw = (b.w / 600) * w;
-        const bh = (b.h / 340) * h;
-        const by = h - bh - h * 0.1;
-
-        ctx.fillStyle = '#070a12';
-        ctx.fillRect(bx, by, bw, bh);
-
-        let roofColor = idx % 2 === 0 ? '#06b6d4' : '#ec4899';
-        if (style === 'noir') roofColor = '#a1a1aa';
-        if (style === 'chiaroscuro') roofColor = '#f59e0b';
-        ctx.fillStyle = roofColor;
-        ctx.fillRect(bx, by, bw, 2.5);
-
-        let winColor = idx % 2 === 0 ? 'rgba(245, 158, 11, 0.75)' : 'rgba(34, 211, 238, 0.75)';
-        if (style === 'noir') winColor = 'rgba(228, 228, 231, 0.65)';
-        if (style === 'chiaroscuro') winColor = 'rgba(251, 191, 36, 0.7)';
-        ctx.fillStyle = winColor;
-
-        for (let wy = by + 12; wy < h - h * 0.14; wy += 16) {
-          if ((Math.floor(wy) + idx) % 3 !== 0) {
-            ctx.fillRect(bx + 7, wy, 5, 7);
-            if (bw > 34) ctx.fillRect(bx + 18, wy, 5, 7);
-            if (bw > 52) ctx.fillRect(bx + 29, wy, 5, 7);
-          }
+        // Distant Skyline (Shot 3) or Farm Storage Barn Silhouette
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.58)';
+        if (
+          currentSceneIndex === 2 ||
+          activeScene.title.toLowerCase().includes('highway') ||
+          activeScene.title.toLowerCase().includes('skyline')
+        ) {
+          [180, 210, 245, 275, 310, 350, 390, 420].forEach((x, i) => {
+            const bx = (x / 640) * w;
+            const bh = ((45 + (i % 3) * 25) / 360) * h;
+            ctx.fillRect(bx, horizonY - bh, (26 / 640) * w, bh);
+          });
+        } else {
+          ctx.fillRect((360 / 640) * w, horizonY - (45 / 360) * h, (220 / 640) * w, (45 / 360) * h);
         }
-      });
 
-      // 5. Wet Asphalt Ground Plane
-      const groundY = h * 0.86;
-      ctx.fillStyle = '#05070e';
-      ctx.fillRect(0, groundY, w, h - groundY);
-
-      ctx.fillStyle =
-        style === 'noir'
-          ? 'rgba(255,255,255,0.08)'
-          : style === 'chiaroscuro'
-          ? 'rgba(245, 158, 11, 0.18)'
-          : 'rgba(34, 211, 238, 0.16)';
-      ctx.fillRect(0, groundY, w, 2);
-
-      // 6. Render Tagged Characters in Scene Blocking
-      const charsToRender = taggedCharacters.length > 0 ? taggedCharacters : cast.slice(0, 1);
-      charsToRender.forEach((char, i) => {
-        const spacing = w / (charsToRender.length + 1);
-        const cx = spacing * (i + 1);
-        const cy = groundY + 4;
-        const rimColor = COLOR_HEX[char.color] || '#22d3ee';
-        const isSpeakingNow =
-          activeSpeaker && activeSpeaker.toLowerCase().includes(char.name.toLowerCase());
-
-        ctx.fillStyle = rimColor;
-        ctx.globalAlpha = isSpeakingNow ? 0.35 : 0.16;
+        // Dirt Road Perspective
+        ctx.fillStyle = '#78350f';
         ctx.beginPath();
-        ctx.ellipse(cx, cy + 6, 24, 5, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-
-        ctx.fillStyle = '#090d16';
-        ctx.strokeStyle = rimColor;
-        ctx.lineWidth = isSpeakingNow ? 2.4 : 1.5;
-
-        ctx.beginPath();
-        ctx.moveTo(cx - 14, cy);
-        ctx.lineTo(cx - 10, cy - 42);
-        ctx.lineTo(cx + 10, cy - 42);
-        ctx.lineTo(cx + 14, cy);
+        ctx.moveTo((260 / 640) * w, horizonY);
+        ctx.lineTo((380 / 640) * w, horizonY);
+        ctx.lineTo((520 / 640) * w, h);
+        ctx.lineTo((120 / 640) * w, h);
         ctx.closePath();
         ctx.fill();
-        ctx.stroke();
 
+        // Actor Silhouettes / Vintage Mercedes Car Frame Indicator
+        ctx.fillStyle = '#0f172a';
+        if (currentSceneIndex === 1 || cam.includes('two-shot')) {
+          const x1 = (240 / 640) * w;
+          const x2 = (400 / 640) * w;
+          const yHead = (210 / 360) * h;
+          ctx.beginPath();
+          ctx.arc(x1, yHead, (26 / 640) * w, 0, Math.PI * 2);
+          ctx.arc(x2, yHead - 4, (26 / 640) * w, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillRect(x1 - (35 / 640) * w, yHead + 18, (70 / 640) * w, (110 / 360) * h);
+          ctx.fillRect(x2 - (35 / 640) * w, yHead + 14, (70 / 640) * w, (115 / 360) * h);
+
+          ctx.font = '600 10px "IBM Plex Mono", monospace';
+          ctx.fillStyle = '#34d399';
+          ctx.textAlign = 'center';
+          ctx.fillText('@MARCUS', x1, yHead - 22);
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillText('@ARTHUR', x2, yHead - 26);
+        } else {
+          const carX = (250 / 640) * w;
+          const carY = (235 / 360) * h;
+          const carW = (140 / 640) * w;
+          const carH = (55 / 360) * h;
+          ctx.fillRect(carX, carY, carW, carH);
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.55)';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(carX, carY, carW, carH);
+        }
+      } else {
+        // 3. Volumetric Neon Haze Orbs
+        const orb1Color =
+          style === 'noir'
+            ? 'rgba(255,255,255,0.06)'
+            : style === 'chiaroscuro'
+            ? 'rgba(245, 158, 11, 0.16)'
+            : 'rgba(6, 182, 212, 0.15)';
+        const orb2Color =
+          style === 'noir'
+            ? 'rgba(255,255,255,0.04)'
+            : style === 'chiaroscuro'
+            ? 'rgba(217, 119, 6, 0.12)'
+            : 'rgba(236, 72, 153, 0.14)';
+
+        ctx.fillStyle = orb1Color;
         ctx.beginPath();
-        ctx.arc(cx, cy - 52, 8.5, 0, Math.PI * 2);
+        ctx.arc(w * 0.28, h * 0.44, 78, 0, Math.PI * 2);
         ctx.fill();
-        ctx.stroke();
 
-        ctx.font = '500 10px "IBM Plex Mono", monospace';
-        ctx.fillStyle = isSpeakingNow ? '#ffffff' : rimColor;
-        ctx.textAlign = 'center';
-        ctx.fillText(`@${char.name.toUpperCase()}`, cx, cy - 66);
-      });
+        ctx.fillStyle = orb2Color;
+        ctx.beginPath();
+        ctx.arc(w * 0.74, h * 0.36, 68, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 4. Skyline Architecture & Lit Windows
+        buildings.forEach((b, idx) => {
+          const bx = (b.x / 600) * w;
+          const bw = (b.w / 600) * w;
+          const bh = (b.h / 340) * h;
+          const by = h - bh - h * 0.1;
+
+          ctx.fillStyle = '#070a12';
+          ctx.fillRect(bx, by, bw, bh);
+
+          let roofColor = idx % 2 === 0 ? '#06b6d4' : '#ec4899';
+          if (style === 'noir') roofColor = '#a1a1aa';
+          if (style === 'chiaroscuro') roofColor = '#f59e0b';
+          ctx.fillStyle = roofColor;
+          ctx.fillRect(bx, by, bw, 2.5);
+
+          let winColor =
+            idx % 2 === 0 ? 'rgba(245, 158, 11, 0.75)' : 'rgba(34, 211, 238, 0.75)';
+          if (style === 'noir') winColor = 'rgba(228, 228, 231, 0.65)';
+          if (style === 'chiaroscuro') winColor = 'rgba(251, 191, 36, 0.7)';
+          ctx.fillStyle = winColor;
+
+          for (let wy = by + 12; wy < h - h * 0.14; wy += 16) {
+            if ((Math.floor(wy) + idx) % 3 !== 0) {
+              ctx.fillRect(bx + 7, wy, 5, 7);
+              if (bw > 34) ctx.fillRect(bx + 18, wy, 5, 7);
+              if (bw > 52) ctx.fillRect(bx + 29, wy, 5, 7);
+            }
+          }
+        });
+
+        // 5. Wet Asphalt Ground Plane
+        const groundY = h * 0.86;
+        ctx.fillStyle = '#05070e';
+        ctx.fillRect(0, groundY, w, h - groundY);
+
+        // 6. Render Tagged Characters in Scene Blocking
+        const charsToRender = taggedCharacters.length > 0 ? taggedCharacters : cast.slice(0, 1);
+        charsToRender.forEach((char, i) => {
+          const spacing = w / (charsToRender.length + 1);
+          const cx = spacing * (i + 1);
+          const cy = groundY + 4;
+          const rimColor = COLOR_HEX[char.color] || '#22d3ee';
+          const isSpeakingNow =
+            activeSpeaker && activeSpeaker.toLowerCase().includes(char.name.toLowerCase());
+
+          ctx.fillStyle = '#090d16';
+          ctx.strokeStyle = rimColor;
+          ctx.lineWidth = isSpeakingNow ? 2.4 : 1.5;
+
+          ctx.beginPath();
+          ctx.moveTo(cx - 14, cy);
+          ctx.lineTo(cx - 10, cy - 42);
+          ctx.lineTo(cx + 10, cy - 42);
+          ctx.lineTo(cx + 14, cy);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(cx, cy - 52, 8.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.font = '500 10px "IBM Plex Mono", monospace';
+          ctx.fillStyle = isSpeakingNow ? '#ffffff' : rimColor;
+          ctx.textAlign = 'center';
+          ctx.fillText(`@${char.name.toUpperCase()}`, cx, cy - 66);
+        });
+      }
 
       ctx.restore();
 
-      // 7. Falling Rain Streaks
-      ctx.strokeStyle =
-        style === 'noir'
-          ? 'rgba(255,255,255,0.26)'
-          : style === 'chiaroscuro'
-          ? 'rgba(251, 191, 36, 0.28)'
-          : 'rgba(34, 211, 238, 0.34)';
-      ctx.lineWidth = 1.15;
-      ctx.beginPath();
-      raindrops.forEach((r) => {
-        const rx = (r.x / 640) * w;
-        const ry = (r.y / 360) * h;
-        ctx.moveTo(rx, ry);
-        ctx.lineTo(rx - 2.5, ry + r.len);
-        if (isPlaying) {
-          r.y += r.speed;
-          if (r.y > 360) {
-            r.y = -15;
-            r.x = Math.random() * 640;
+      // 7. Falling Rain Streaks (for non-orchard styles)
+      if (style !== 'orchard') {
+        ctx.strokeStyle =
+          style === 'noir'
+            ? 'rgba(255,255,255,0.26)'
+            : style === 'chiaroscuro'
+            ? 'rgba(251, 191, 36, 0.28)'
+            : 'rgba(34, 211, 238, 0.34)';
+        ctx.lineWidth = 1.15;
+        ctx.beginPath();
+        raindrops.forEach((r) => {
+          const rx = (r.x / 640) * w;
+          const ry = (r.y / 360) * h;
+          ctx.moveTo(rx, ry);
+          ctx.lineTo(rx - 2.5, ry + r.len);
+          if (isPlaying) {
+            r.y += r.speed;
+            if (r.y > 360) {
+              r.y = -15;
+              r.x = Math.random() * 640;
+            }
           }
-        }
-      });
-      ctx.stroke();
+        });
+        ctx.stroke();
+      }
 
       // 8. Optional Rule-of-Thirds Grid
       if (showGrid) {
@@ -372,14 +430,6 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
         ctx.moveTo(0, (h * 2) / 3);
         ctx.lineTo(w, (h * 2) / 3);
         ctx.stroke();
-
-        ctx.strokeStyle = 'rgba(34, 211, 238, 0.28)';
-        ctx.beginPath();
-        ctx.moveTo(w / 2 - 8, h / 2);
-        ctx.lineTo(w / 2 + 8, h / 2);
-        ctx.moveTo(w / 2, h / 2 - 8);
-        ctx.lineTo(w / 2, h / 2 + 8);
-        ctx.stroke();
       }
 
       animId = requestAnimationFrame(render);
@@ -390,7 +440,15 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', resize);
     };
-  }, [activeScene, isPlaying, showGrid, taggedCharacters, cast, activeSpeaker]);
+  }, [
+    activeScene,
+    currentSceneIndex,
+    isPlaying,
+    showGrid,
+    taggedCharacters,
+    cast,
+    activeSpeaker
+  ]);
 
   const formatTimecode = (frames: number) => {
     const totalSeconds = Math.floor(frames / 24) % Math.max(1, activeScene.durationSec);
@@ -425,16 +483,23 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
     }
   };
 
+  const defaultDialogueLine =
+    activeSubtitle ||
+    activeScene.dialogue ||
+    "The turbo's for hauling grain, Dad.";
+  const defaultSpeakerName = activeSpeaker || activeScene.speaker || 'Marcus';
+
   return (
     <section className="bg-[#0d1322] border border-slate-800/90 rounded-2xl p-5 flex flex-col gap-4">
-      {/* Scene Title & Mode Switcher Header */}
+      {/* Scene Title, Video Engine Model Selector & Mode Switcher Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
-        <div>
-          <div className="text-xs font-mono text-cyan-400 tabular-nums">
-            {activeScene.slugline}
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-xs font-mono text-cyan-400 tabular-nums">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
+            <span className="truncate">{activeScene.slugline}</span>
           </div>
-          <h2 className="text-base font-bold text-white tracking-tight mt-0.5">
-            Scene {currentSceneIndex + 1}: {activeScene.title}
+          <h2 className="text-base font-bold text-white tracking-tight mt-0.5 truncate">
+            {activeScene.title}
           </h2>
         </div>
 
@@ -467,12 +532,21 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
         </div>
       </div>
 
-      {/* Veo 3 Realistic Video Generation Controls Bar */}
+      {/* Video Engine Selector + Veo 3 Realistic Video Generation Controls Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-950/90 p-2.5 rounded-xl border border-cyan-500/30 text-xs">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="font-mono text-[11px] uppercase text-amber-400 font-semibold px-1">
-            Veo 3 Engine
-          </span>
+          <select
+            aria-label="Video Engine Model"
+            value={selectedVideoEngine}
+            onChange={(e) => onChangeVideoEngine(e.target.value as VideoEngineModel)}
+            className="bg-slate-900 border border-slate-700/80 rounded-lg px-2 py-1 text-[11px] font-mono text-cyan-300 focus:outline-none focus:border-cyan-500"
+          >
+            <option value="fal-ai/veo3">Google Veo 3.1 (Native Audio + Video)</option>
+            <option value="fal-ai/kling-video/v2/master/image-to-video">
+              Kling 3.0 Master (Face Consistency)
+            </option>
+            <option value="fal-ai/runway-gen4">Runway Gen-4 Turbo</option>
+          </select>
 
           <select
             aria-label="Video Resolution"
@@ -561,6 +635,7 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
             onChange={(e) => onChangeStyle(e.target.value as VisualStyle)}
             className="bg-slate-900 text-slate-200 border border-slate-700/80 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-500 font-medium"
           >
+            <option value="orchard">Golden Hour Orchard</option>
             <option value="cyberpunk">Cyberpunk VFX</option>
             <option value="noir">Tech Noir</option>
             <option value="anime">Synth Anime</option>
@@ -643,24 +718,27 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
             {/* Top Source Badge */}
             <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none text-[11px] font-mono tabular-nums">
               <div className="bg-slate-950/85 backdrop-blur-md border border-cyan-500/40 px-2.5 py-1 rounded-md text-cyan-300">
-                {activeScene.videoSource || 'Veo 3 Realistic Render'} ·{' '}
+                {activeScene.videoSource || 'Veo 3.1 Realistic Render'} ·{' '}
                 {activeScene.videoResolution || '720p'}
               </div>
-              <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-md text-slate-300">
-                {videoCurrentTime.toFixed(1)}s / {(videoDuration || 3.0).toFixed(1)}s
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-[10px] text-emerald-300 font-mono">
+                  LIP-SYNC: ACTIVE
+                </span>
+                <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-md text-slate-300">
+                  {videoCurrentTime.toFixed(1)}s / {(videoDuration || 3.0).toFixed(1)}s
+                </div>
               </div>
             </div>
 
             {/* Bottom Dedicated HTML5 Video Player Controls Bar */}
             <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/95 via-black/75 to-transparent p-3 pt-6 flex flex-col gap-2">
-              {activeSubtitle && (
-                <div className="text-center pb-1">
-                  <span className="text-[10px] font-mono uppercase text-cyan-400">
-                    {activeSpeaker}:{' '}
-                  </span>
-                  <span className="text-xs text-white font-medium">“{activeSubtitle}”</span>
-                </div>
-              )}
+              <div className="text-center pb-1">
+                <span className="text-[10px] font-mono uppercase text-cyan-400">
+                  {defaultSpeakerName}:{' '}
+                </span>
+                <span className="text-xs text-white font-medium">“{defaultDialogueLine}”</span>
+              </div>
 
               {/* Interactive Timeline Scrubber */}
               <input
@@ -730,7 +808,7 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
             <Film className="w-9 h-9 text-cyan-400" />
             <div>
               <div className="text-sm font-bold text-white">
-                No Rendered Video Clip for Scene {currentSceneIndex + 1} Yet
+                No Rendered Video Clip for {activeScene.title} Yet
               </div>
               <p className="text-xs text-slate-400 max-w-xs mt-1">
                 Click <strong className="text-cyan-300">Render Realistic Video</strong> above to
@@ -765,50 +843,33 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
               <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-md text-cyan-300">
                 {activeScene.camera}
               </div>
-              <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-md text-slate-300">
-                TC {formatTimecode(timecodeFrames)} · 24fps
+              <div className="flex items-center gap-2">
+                <div className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-[10px] text-emerald-300 font-mono">
+                  LIP-SYNC: ACTIVE
+                </div>
+                <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-md text-slate-300">
+                  TC {formatTimecode(timecodeFrames)} · 24fps
+                </div>
               </div>
             </div>
 
-            {/* Center Play/Pause Button */}
+            {/* Subtitle Overlay */}
+            <div className="absolute bottom-12 inset-x-4 text-center pointer-events-none">
+              <span className="px-3 py-1 rounded bg-black/80 border border-slate-800 text-white text-xs font-medium inline-block max-w-full truncate">
+                <span className="text-cyan-300 font-mono mr-1">{defaultSpeakerName}:</span>
+                “{defaultDialogueLine}”
+              </span>
+            </div>
+
+            {/* Play / Audition Scene Button Overlay */}
             <button
               type="button"
-              onClick={onTogglePlay}
-              aria-label={isPlaying ? 'Pause scene preview' : 'Play scene preview'}
-              className="absolute inset-0 m-auto w-13 h-13 rounded-full bg-cyan-500/90 hover:bg-cyan-400 text-slate-950 flex items-center justify-center shadow-lg transition transform hover:scale-105 active:scale-95 opacity-90 group-hover:opacity-100"
+              onClick={onToggleTableRead}
+              className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow flex items-center gap-1.5 transition active:scale-95"
             >
-              {isPlaying ? (
-                <Pause className="w-5 h-5 fill-current" />
-              ) : (
-                <Play className="w-5 h-5 fill-current ml-0.5" />
-              )}
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>{isTableReading ? 'Stop Audition' : 'Play / Audition Scene'}</span>
             </button>
-
-            {/* Bottom Scrim + Live Table Read Subtitle */}
-            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent p-3 pt-8 pointer-events-none flex items-end justify-between gap-3">
-              {activeSubtitle ? (
-                <div className="w-full text-center">
-                  <span className="text-[11px] font-mono uppercase text-cyan-400 block">
-                    {activeSpeaker}
-                  </span>
-                  <p className="text-xs sm:text-sm text-white font-medium leading-snug drop-shadow">
-                    “{activeSubtitle}”
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-wrap items-center justify-between w-full text-[11px] text-slate-300 font-mono gap-2">
-                  <span className="truncate max-w-[65%]">
-                    Cast in Shot:{' '}
-                    {taggedCharacters.length > 0
-                      ? taggedCharacters.map((c) => `@${c.name}`).join(' · ')
-                      : 'Environment Master'}
-                  </span>
-                  <span className="text-slate-400 tabular-nums">
-                    Tension {activeScene.tensionLevel}%
-                  </span>
-                </div>
-              )}
-            </div>
           </>
         )}
       </div>
@@ -844,12 +905,12 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
         </button>
       </div>
 
-      {/* Sequenced Shot Timeline */}
+      {/* Interactive Multi-Shot Timeline */}
       <div className="flex flex-col gap-2.5 pt-1">
         <div className="flex items-center justify-between text-xs text-slate-400">
           <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-slate-300">
             <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Sequenced Shot Timeline ({scenes.length} Shots)</span>
+            <span>Interactive Multi-Shot Timeline ({scenes.length} Shots Sequenced)</span>
           </div>
           <button
             type="button"
@@ -857,7 +918,7 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
             className="text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1 transition whitespace-nowrap shrink-0"
           >
             <PlusCircle className="w-3.5 h-3.5" />
-            <span>Add Blank Scene</span>
+            <span>Add Blank Shot</span>
           </button>
         </div>
 
@@ -875,18 +936,17 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
                 }}
                 className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-1.5 ${
                   active
-                    ? 'bg-cyan-950/40 border-cyan-500/60 text-white'
-                    : 'bg-slate-950/60 border-slate-800/90 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                    ? 'bg-cyan-500/15 border-cyan-400 text-white'
+                    : 'bg-[#111a2e] border-slate-800/90 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
                   <span
                     className={`text-[10px] font-mono uppercase tabular-nums ${
-                      active ? 'text-cyan-400 font-semibold' : 'text-slate-500'
+                      active ? 'text-cyan-300 font-bold' : 'text-cyan-400/80'
                     }`}
                   >
-                    Shot {String(idx + 1).padStart(2, '0')} ·{' '}
-                    {scene.videoUrl ? 'VIDEO READY' : `${scene.durationSec}s`}
+                    SHOT {idx + 1} · {scene.videoUrl ? 'VIDEO READY' : `${scene.durationSec}s`}
                   </span>
                   <div className="flex items-center gap-1">
                     <button
@@ -916,9 +976,15 @@ export const CinemaViewport: React.FC<CinemaViewportProps> = ({
                   </div>
                 </div>
                 <div className="text-xs font-semibold truncate w-full">{scene.title}</div>
-                <div className="text-[11px] font-mono text-slate-500 truncate">
-                  {scene.style} · {scene.camera.replace('CAMERA: ', '')}
-                </div>
+                {scene.dialogue ? (
+                  <div className="text-[10px] text-slate-400 truncate">
+                    🗣️ {scene.speaker || 'Actor'}: &ldquo;{scene.dialogue}&rdquo;
+                  </div>
+                ) : (
+                  <div className="text-[11px] font-mono text-slate-500 truncate">
+                    {scene.style} · {scene.camera.replace('CAMERA: ', '')}
+                  </div>
+                )}
               </div>
             );
           })}

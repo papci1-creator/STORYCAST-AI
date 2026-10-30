@@ -22,12 +22,14 @@ interface CastModalProps {
 }
 
 const VOICE_MODELS = [
+  'Josh (Warm Baritone)',
+  'Arnold (Gravelly Veteran)',
+  'Adam (Deep Cinematic)',
+  'Bella (Expressive Lead)',
   'Nova (Husky Alto)',
   'Orion (Calm Tenor)',
   'Lyra (Ethereal Synth)',
-  'Titan (Deep Gravel)',
-  'Vega (Crisp Narrator)',
-  'Kairo (Cybernetic Mod)'
+  'Titan (Deep Gravel)'
 ];
 
 export const CastModal: React.FC<CastModalProps> = ({
