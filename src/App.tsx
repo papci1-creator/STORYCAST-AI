@@ -24,16 +24,21 @@ import {
   Plus,
   Check,
   Radio,
-  Clapperboard
+  Clapperboard,
+  X
 } from 'lucide-react';
 import {
   CastMember,
+  CharacterRole,
+  CharacterColor,
   SceneShot,
   StoryBeat,
   AudioTrackMix,
   VisualStyle,
   VideoEngineModel,
-  VoiceTake
+  ShotSfxType,
+  VoiceTake,
+  SuggestedArchetype
 } from './types/studio';
 import {
   INITIAL_CAST,
@@ -544,28 +549,363 @@ export default function App() {
     );
   };
 
+  // Missing Character Archetype Suggestions State & Script Scope Analyzer
+  const [isAnalyzingArchetypes, setIsAnalyzingArchetypes] = useState<boolean>(false);
+  const [suggestedArchetypes, setSuggestedArchetypes] = useState<SuggestedArchetype[]>([]);
+  const [showArchetypePanel, setShowArchetypePanel] = useState<boolean>(false);
+
+  const buildLocalArchetypeSuggestions = (): SuggestedArchetype[] => {
+    const combinedScript = `${logline}\n${scenes.map((s) => s.script).join('\n')}`.toLowerCase();
+    const existingRoles = new Set(cast.map((c) => c.role));
+    const existingArchetypes = cast.map((c) => c.archetype.toLowerCase()).join(' ');
+    const existingNames = new Set(cast.map((c) => c.name.toLowerCase()));
+
+    const isOrchardTheme =
+      combinedScript.includes('orchard') ||
+      combinedScript.includes('apple') ||
+      combinedScript.includes('harvest') ||
+      combinedScript.includes('grain') ||
+      combinedScript.includes('market');
+
+    const pool: SuggestedArchetype[] = [
+      {
+        id: 'arch-antagonist',
+        archetype: 'The Antagonist / Market Gatekeeper',
+        suggestedName: existingNames.has('clara') ? 'Vance' : 'Clara',
+        role: 'ANTA',
+        roleTitle: isOrchardTheme ? 'City Produce Broker' : 'Syndicate Enforcer',
+        reason: !existingRoles.has('ANTA')
+          ? isOrchardTheme
+            ? 'Your script references external market pressure ("they judge an apple by how shiny the wax is"), but no on-screen Antagonist embodies that commercial threat yet.'
+            : 'No Antagonist (ANTA) is currently cast to personify the external opposition driving the scene conflict.'
+          : 'Adds a high-stakes institutional adversary who forces the protagonist and mentor to unite under pressure.',
+        dramaticFunction:
+          'Externalizes the philosophical clash between @Marcus and @Arthur into an immediate financial ultimatum.',
+        facePrompt: isOrchardTheme
+          ? 'Sharp-eyed 40-year-old commodities buyer in a tailored slate trench coat, holding a digital grading tablet, crisp morning light'
+          : 'Calculating corporate executive, cold rim lighting, sharp jawline, tailored charcoal suit',
+        voiceModel: 'Bella (Expressive Lead)',
+        sampleLine: isOrchardTheme
+          ? "Your father's heirloom roots don't clear customs, Marcus. Sign the distributor buyout or haul the crates back."
+          : "You're out of time and out of leverage. Hand over the drive before the sector locks down.",
+        avatarUrl:
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+        color: 'pink'
+      },
+      {
+        id: 'arch-catalyst',
+        archetype: 'The Catalyst / Pragmatic Insider',
+        suggestedName: existingNames.has('elena') ? 'Maya' : 'Elena',
+        role: 'SIDE',
+        roleTitle: isOrchardTheme ? 'Co-Op Logistics Dispatcher' : 'Field Signal Specialist',
+        reason:
+          !existingRoles.has('SIDE') && !existingArchetypes.includes('catalyst')
+            ? 'The current script relies on a two-hander debate; a Catalyst / Ally archetype introduces urgent time pressure and bridges generational tension.'
+            : 'Introduces a fast-talking operational ally who forces characters from debate into action.',
+        dramaticFunction:
+          'Delivers ticking-clock urgency and grounds technical stakes ("turbo hauling", route timing) with real-world consequences.',
+        facePrompt:
+          'Resourceful 26-year-old dispatcher with grease-smudged denim jacket, headset around neck, warm golden hour sunlight',
+        voiceModel: 'Bella (Expressive Lead)',
+        sampleLine: isOrchardTheme
+          ? 'The highway weigh-station closes in twenty minutes—if that turbo W123 can actually haul, prove it now!'
+          : 'They just rerouted the patrol grid. We have a four-minute window through the east conduit.',
+        avatarUrl:
+          'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&auto=format&fit=crop&q=80',
+        color: 'emerald'
+      },
+      {
+        id: 'arch-foil',
+        archetype: 'The Foil / Rival Traditionalist',
+        suggestedName: existingNames.has('harlan') ? 'Cole' : 'Harlan',
+        role: 'SUPP',
+        roleTitle: isOrchardTheme ? 'Neighboring Orchard Owner' : 'Veteran Syndicate Defector',
+        reason:
+          !existingRoles.has('SUPP') || !existingArchetypes.includes('foil')
+            ? 'Your script explores legacy vs. modernization, but lacks a cautionary Foil showing what happens when a family compromises its roots.'
+            : 'Provides a contrasting mirror to the mentor figure, heightening the emotional cost of the protagonist’s choice.',
+        dramaticFunction:
+          'Serves as a living warning in the subplot—someone who already sold out to the waxed-fruit conglomerate.',
+        facePrompt:
+          'Weathered 55-year-old grower in a faded canvas vest, conflicted expression, standing beside automated packing crates',
+        voiceModel: 'Adam (Deep Cinematic)',
+        sampleLine: isOrchardTheme
+          ? 'I took their wax-coating contract last autumn, Arthur. Paid off the tractor, lost the taste in a single season.'
+          : 'I traded the old code for a clean slate. Believe me, kid—the price never stops compounding.',
+        avatarUrl:
+          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80',
+        color: 'orange'
+      }
+    ];
+
+    return pool;
+  };
+
+  const handleSuggestMissingArchetypes = async () => {
+    setIsAnalyzingArchetypes(true);
+    setShowArchetypePanel(true);
+    studioAudio.playCueChime(1.1);
+
+    const fullScriptText = scenes
+      .map((s, idx) => `Scene ${idx + 1} (${s.slugline}):\n${s.script}`)
+      .join('\n\n');
+
+    const fallbackPool = buildLocalArchetypeSuggestions();
+
+    try {
+      const res = await fetch('/api/cast/suggest-archetypes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scriptText: fullScriptText,
+          logline,
+          cast: cast.map((c) => ({
+            name: c.name,
+            role: c.role,
+            archetype: c.archetype
+          }))
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data?.suggestions) && data.suggestions.length > 0) {
+          const colors: CharacterColor[] = ['pink', 'emerald', 'orange', 'cyan', 'amber'];
+          const avatars = [
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+            'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&auto=format&fit=crop&q=80',
+            'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80'
+          ];
+          const mapped: SuggestedArchetype[] = data.suggestions.map(
+            (
+              item: {
+                archetype?: string;
+                suggestedName?: string;
+                role?: string;
+                reason?: string;
+                dramaticFunction?: string;
+                facePrompt?: string;
+                voiceModel?: string;
+                sampleLine?: string;
+              },
+              idx: number
+            ) => {
+              const roleUpper = (item.role || '').toUpperCase();
+              const normalizedRole: CharacterRole =
+                roleUpper.includes('ANT')
+                  ? 'ANTA'
+                  : roleUpper.includes('SIDE') || roleUpper.includes('ALLY')
+                  ? 'SIDE'
+                  : roleUpper.includes('PROT')
+                  ? 'PROT'
+                  : 'SUPP';
+
+              return {
+                id: `ai-arch-${Date.now()}-${idx}`,
+                archetype: item.archetype || fallbackPool[idx % fallbackPool.length].archetype,
+                suggestedName: (
+                  item.suggestedName || fallbackPool[idx % fallbackPool.length].suggestedName
+                ).replace(/^@/, ''),
+                role: normalizedRole,
+                roleTitle: item.role || fallbackPool[idx % fallbackPool.length].roleTitle,
+                reason: item.reason || fallbackPool[idx % fallbackPool.length].reason,
+                dramaticFunction:
+                  item.dramaticFunction || fallbackPool[idx % fallbackPool.length].dramaticFunction,
+                facePrompt: item.facePrompt || fallbackPool[idx % fallbackPool.length].facePrompt,
+                voiceModel:
+                  item.voiceModel || fallbackPool[idx % fallbackPool.length].voiceModel,
+                sampleLine: item.sampleLine || fallbackPool[idx % fallbackPool.length].sampleLine,
+                avatarUrl: avatars[idx % avatars.length],
+                color: colors[idx % colors.length]
+              };
+            }
+          );
+
+          setSuggestedArchetypes(mapped);
+          setIsAnalyzingArchetypes(false);
+          showToast(`Identified ${mapped.length} missing character archetypes from script scope`);
+          return;
+        }
+      }
+    } catch {
+      // Fall back to local script-scope analyzer
+    }
+
+    setSuggestedArchetypes(fallbackPool);
+    setIsAnalyzingArchetypes(false);
+    showToast(`Suggested ${fallbackPool.length} missing character archetypes for current script`);
+  };
+
+  const handleAddSuggestedArchetype = (
+    suggestion: SuggestedArchetype,
+    insertIntoScript = false
+  ) => {
+    const newChar: CastMember = {
+      id: `cast-${Date.now()}`,
+      name: suggestion.suggestedName.replace(/\s+/g, ''),
+      role: suggestion.role,
+      color: suggestion.color,
+      archetype: suggestion.archetype,
+      facePrompt: suggestion.facePrompt,
+      avatarUrl: suggestion.avatarUrl,
+      voiceModel: suggestion.voiceModel,
+      voiceStyle: suggestion.roleTitle,
+      pitch: suggestion.role === 'ANTA' ? 0.95 : 1.05,
+      speed: 1.0,
+      faceLocked: true,
+      voiceLocked: true
+    };
+
+    setCast((prev) => [...prev, newChar]);
+    setSuggestedArchetypes((prev) => prev.filter((item) => item.id !== suggestion.id));
+
+    if (insertIntoScript) {
+      const cueSnippet = `\n\n@${newChar.name}: "${suggestion.sampleLine}"`;
+      updateActiveScene({ script: `${activeScene.script.trimEnd()}${cueSnippet}` });
+      showToast(`Added @${newChar.name} (${suggestion.archetype}) to Cast & Scene Script`);
+    } else {
+      showToast(`Added @${newChar.name} (${suggestion.archetype}) to Cast`);
+    }
+  };
+
   // Timeline Scene operations
   const handleAddScene = () => {
     const newId = Date.now();
     const nextNum = scenes.length + 1;
     const newScene: SceneShot = {
       id: newId,
-      title: `Sector 0${nextNum} Recon`,
-      slugline: `EXT. NEO-TOKYO SECTOR 0${nextNum} - NIGHT`,
-      script: `EXT. NEO-TOKYO SECTOR 0${nextNum} - NIGHT\n\nRain-slicked concrete reflects the amber warning beacons overhead.\n\n@${
-        cast[0]?.name || 'Elena'
-      } advances along the catwalk, scanning the perimeter.`,
-      camera: 'CAMERA: Static Anamorphic Wide [1.0x]',
-      lens: '35mm Anamorphic · T2.0',
-      lighting: 'High-contrast cyan & amber sodium cross-lighting',
-      foleyNote: 'Metallic footsteps on wet grating, distant siren echo',
-      durationSec: 40,
+      title: `Shot ${nextNum}: Close-Up Reaction`,
+      status: 'READY TO RENDER',
+      slugline: `EXT. APPLE ORCHARD - MORNING`,
+      script: `EXT. APPLE ORCHARD - MORNING\n\n@${
+        cast[0]?.name || 'Marcus'
+      }: "We'll see who's right at the market."`,
+      camera: 'Over-The-Shoulder Close-Up',
+      lens: '50mm Prime · Golden Hour',
+      lighting: 'Cinematic close-up shot in golden hour orchard lighting, shallow depth of field',
+      foleyNote: 'Acoustic guitar chord, morning orchard breeze',
+      durationSec: 4.0,
       tensionLevel: 70,
-      style: 'cyberpunk'
+      style: 'orchard',
+      prompt: 'Cinematic close-up shot in golden hour orchard lighting, shallow depth of field',
+      dialogue: "We'll see who's right at the market.",
+      speaker: cast[0]?.name || 'Marcus',
+      keyframeUrl:
+        'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1000&auto=format&fit=crop&q=80',
+      sfx: 'guitar',
+      actors: [cast[0]?.name || 'Marcus'],
+      videoResolution: '1080p',
+      videoClipDuration: '5s'
     };
     setScenes((prev) => [...prev, newScene]);
     setCurrentSceneIndex(scenes.length);
-    showToast(`Added Scene ${nextNum}`);
+    showToast(`Added Shot ${nextNum}`);
+  };
+
+  const handleUpdateShotByIndex = (idx: number, patch: Partial<SceneShot>) => {
+    setScenes((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
+    showToast(`Saved Shot ${idx + 1} prompt & lip-sync settings`);
+  };
+
+  const handleTriggerShotSfx = (sfx: ShotSfxType = 'guitar') => {
+    studioAudio.triggerShotSfx(sfx, 0.85);
+    showToast(
+      sfx === 'slam'
+        ? 'Triggered Heavy Car Trunk Slam SFX'
+        : sfx === 'engine'
+        ? 'Triggered Vintage Engine Acceleration SFX'
+        : 'Triggered Warm Acoustic Folk Guitar Chord'
+    );
+  };
+
+  // Stitch & Play All Shots Sequentially (Full Movie Chain)
+  const handleStitchAndPlayFullMovie = () => {
+    let idx = 0;
+    const playShotAt = (shotIdx: number) => {
+      const target = scenes[shotIdx];
+      if (!target) {
+        setIsTableReading(false);
+        setActiveSpeaker(null);
+        setActiveSubtitle(null);
+        showToast('Completed full multi-shot movie playback');
+        return;
+      }
+
+      setCurrentSceneIndex(shotIdx);
+      setIsPlaying(true);
+      setIsTableReading(true);
+
+      studioAudio.playAcousticChord(0.42);
+      if (target.sfx === 'slam') {
+        window.setTimeout(() => studioAudio.playTrunkSlamSfx(0.85), 1500);
+      } else if (target.sfx === 'engine') {
+        window.setTimeout(() => studioAudio.playEngineAccelSfx(0.85), 1200);
+      }
+
+      const spkName = target.speaker || cast[0]?.name || 'Marcus';
+      const lineText = target.dialogue || target.title;
+      const actor = cast.find((c) => c.name.toLowerCase() === spkName.toLowerCase());
+
+      setActiveSpeaker(spkName);
+      setActiveSubtitle(lineText);
+
+      studioAudio.speakDialogueLine(
+        lineText,
+        actor?.pitch || 1.0,
+        actor?.speed || 1.0,
+        1.0,
+        () => {
+          if (shotIdx + 1 < scenes.length) {
+            window.setTimeout(() => playShotAt(shotIdx + 1), 350);
+          } else {
+            setIsTableReading(false);
+            setActiveSpeaker(null);
+            setActiveSubtitle(null);
+            showToast('Finished playing stitched full movie');
+          }
+        }
+      );
+    };
+
+    showToast(`Stitching & playing all ${scenes.length} shots sequentially...`);
+    playShotAt(idx);
+  };
+
+  const handleRenderAllShotsBatch = () => {
+    setScenes((prev) => prev.map((s) => ({ ...s, status: 'VIDEO READY' })));
+    handleStitchAndPlayFullMovie();
+  };
+
+  const handleAutoBreakScriptIntoShots = () => {
+    const lines = activeScene.script
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.includes(':'));
+    if (lines.length === 0) {
+      showToast('Add @Speaker: "Dialogue" lines to sync into shots');
+      return;
+    }
+
+    setScenes((prev) =>
+      prev.map((shot, i) => {
+        const line = lines[i];
+        if (!line) return shot;
+        const [speakerRaw, ...rest] = line.split(':');
+        const speaker = speakerRaw.replace(/^@/, '').trim();
+        const dialogue = rest
+          .join(':')
+          .replace(/\[.*?\]/g, '')
+          .replace(/^["“]|["”]$/g, '')
+          .trim();
+        return {
+          ...shot,
+          speaker: speaker || shot.speaker,
+          dialogue: dialogue || shot.dialogue
+        };
+      })
+    );
+    setCurrentSceneIndex(0);
+    showToast('Synced screenplay speaker dialogue lines into Multi-Shot Timeline');
   };
 
   const handleDuplicateScene = (idx: number) => {
@@ -852,6 +1192,14 @@ export default function App() {
             <PWAInstallButton variant="header" />
             <button
               type="button"
+              onClick={handleStitchAndPlayFullMovie}
+              className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-400 to-orange-400 hover:opacity-95 text-slate-950 text-xs font-bold flex items-center gap-1.5 shadow transition whitespace-nowrap shrink-0"
+            >
+              <Film className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Play Full Movie</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('audio')}
               className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-cyan-300 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
             >
@@ -1127,7 +1475,14 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 font-mono text-slate-400 tabular-nums">
+                    <div className="flex flex-wrap items-center gap-3 font-mono text-slate-400 tabular-nums">
+                      <button
+                        type="button"
+                        onClick={handleAutoBreakScriptIntoShots}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 transition"
+                      >
+                        ✨ Sync Script → Shots
+                      </button>
                       <span>
                         {wordCount} words · {charCount} chars · ~{estPages} pg
                       </span>
@@ -1248,7 +1603,25 @@ export default function App() {
                       Customize character faces, upload reference portraits, and tune or record voices
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={isAnalyzingArchetypes}
+                      onClick={handleSuggestMissingArchetypes}
+                      className="text-xs bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition active:scale-95 whitespace-nowrap shrink-0 disabled:opacity-60"
+                    >
+                      {isAnalyzingArchetypes ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-300" />
+                          <span>Analyzing Script Scope...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Suggest Missing Archetypes</span>
+                        </>
+                      )}
+                    </button>
                     <button
                       type="button"
                       onClick={handleToggleAllCastLocks}
@@ -1283,6 +1656,129 @@ export default function App() {
                     </button>
                   </div>
                 </div>
+
+                {/* Script Scope Missing Character Archetype Suggestions Panel */}
+                {showArchetypePanel && (
+                  <div className="rounded-xl bg-[#10192d] border border-amber-500/35 p-3.5 flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-bold uppercase tracking-wider font-mono text-amber-300 flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Missing Character Archetypes for Current Script Scope</span>
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">
+                            {scenes.length} {scenes.length === 1 ? 'Scene' : 'Scenes'} Analyzed ·{' '}
+                            {cast.length} Active Cast
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Based on your screenplay dialogue, conflict themes, and existing cast balance (
+                          {cast.map((c) => `@${c.name} [${c.role}]`).join(', ')})
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowArchetypePanel(false)}
+                        title="Close Suggestions"
+                        className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {isAnalyzingArchetypes ? (
+                      <div className="py-6 flex items-center justify-center gap-2 text-xs text-amber-300 font-mono">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Scanning scene subtext, conflict stakes, and archetype gaps...</span>
+                      </div>
+                    ) : suggestedArchetypes.length === 0 ? (
+                      <div className="py-3 text-xs text-emerald-300 font-mono flex items-center justify-between">
+                        <span>All suggested archetypes have been added to your project cast!</span>
+                        <button
+                          type="button"
+                          onClick={handleSuggestMissingArchetypes}
+                          className="underline text-cyan-300 hover:text-cyan-200"
+                        >
+                          Re-Analyze Script
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-2.5">
+                        {suggestedArchetypes.map((item) => {
+                          const st = COLOR_STYLES[item.color] || COLOR_STYLES.amber;
+                          return (
+                            <div
+                              key={item.id}
+                              className="p-3 rounded-xl bg-slate-950/90 border border-slate-800 hover:border-amber-500/40 transition flex flex-col gap-2"
+                            >
+                              <div className="flex flex-wrap items-start justify-between gap-2">
+                                <div className="flex items-center gap-2.5">
+                                  <img
+                                    src={item.avatarUrl}
+                                    alt={item.suggestedName}
+                                    referrerPolicy="no-referrer"
+                                    className="w-10 h-10 rounded-lg object-cover border border-slate-700 shrink-0"
+                                  />
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <span className="text-xs font-bold text-amber-300 font-mono uppercase">
+                                        {item.archetype}
+                                      </span>
+                                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-cyan-300">
+                                        {item.role} · {item.roleTitle}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs text-slate-200 font-medium mt-0.5">
+                                      Suggested Handle:{' '}
+                                      <span className={`font-mono font-bold ${st.text}`}>
+                                        @{item.suggestedName}
+                                      </span>{' '}
+                                      · <span className="text-slate-400">{item.voiceModel}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAddSuggestedArchetype(item, false)}
+                                    className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-[11px] font-semibold flex items-center gap-1 transition whitespace-nowrap"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    <span>Add @{item.suggestedName}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAddSuggestedArchetype(item, true)}
+                                    className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-bold flex items-center gap-1 transition whitespace-nowrap"
+                                  >
+                                    <Check className="w-3 h-3 stroke-[2.5]" />
+                                    <span>Cast + Insert Line</span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              <p className="text-xs text-slate-300 leading-relaxed">
+                                <strong className="text-slate-100">Why Missing in Scope:</strong>{' '}
+                                {item.reason}
+                              </p>
+                              <p className="text-[11px] text-slate-400">
+                                <strong className="text-cyan-300 font-mono">
+                                  Dramatic Function:
+                                </strong>{' '}
+                                {item.dramaticFunction}
+                              </p>
+                              <div className="px-2.5 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-[11px] font-mono text-emerald-300">
+                                @{item.suggestedName}: &ldquo;{item.sampleLine}&rdquo;
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Cast List */}
                 <div className="flex flex-col gap-3 max-h-[560px] overflow-y-auto pr-1">
@@ -1762,18 +2258,40 @@ export default function App() {
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleToggleLiveAtmos}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 border transition whitespace-nowrap shrink-0 ${
-                      isAtmosLive
-                        ? 'bg-emerald-950/70 border-emerald-500/60 text-emerald-300'
-                        : 'bg-slate-900 border-slate-700 text-slate-200 hover:border-cyan-500/50'
-                    }`}
-                  >
-                    <Radio className="w-4 h-4 text-cyan-400" />
-                    <span>{isAtmosLive ? 'Stop Live Atmos Synth' : 'Preview Live Atmos Mix'}</span>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        studioAudio.playAcousticChord(0.5);
+                        showToast('Playing G-Major Acoustic Folk Guitar Score');
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-mono transition"
+                    >
+                      🎸 Test Guitar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        studioAudio.playTrunkSlamSfx(0.85);
+                        showToast('Playing Heavy Car Trunk Slam SFX');
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-mono transition"
+                    >
+                      💥 Test Trunk Slam SFX
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleToggleLiveAtmos}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 border transition whitespace-nowrap shrink-0 ${
+                        isAtmosLive
+                          ? 'bg-emerald-950/70 border-emerald-500/60 text-emerald-300'
+                          : 'bg-slate-900 border-slate-700 text-slate-200 hover:border-cyan-500/50'
+                      }`}
+                    >
+                      <Radio className="w-4 h-4 text-cyan-400" />
+                      <span>{isAtmosLive ? 'Stop Live Atmos Synth' : 'Preview Live Atmos Mix'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Audio Stems */}
@@ -1897,13 +2415,18 @@ export default function App() {
               }}
               onGenerateVeoVideo={handleGenerateVeoVideo}
               onUpdateSceneVideoConfig={updateActiveScene}
+              onUpdateShotByIndex={handleUpdateShotByIndex}
               onUploadSceneVideo={(url) => {
                 updateActiveScene({
                   videoUrl: url,
-                  videoSource: 'Uploaded MP4/WebM Master'
+                  videoSource: 'Uploaded MP4/WebM Master',
+                  status: 'MP4 LOADED'
                 });
                 showToast('Loaded custom scene video into player');
               }}
+              onStitchAndPlayFullMovie={handleStitchAndPlayFullMovie}
+              onRenderAllShotsBatch={handleRenderAllShotsBatch}
+              onTriggerShotSfx={handleTriggerShotSfx}
             />
           </div>
         </div>

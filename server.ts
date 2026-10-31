@@ -76,6 +76,80 @@ async function startServer() {
     }
   });
 
+  // POST /api/cast/suggest-archetypes - Analyzes script content & current cast to suggest missing character archetypes
+  app.post('/api/cast/suggest-archetypes', async (req, res) => {
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
+        res.status(503).json({
+          error: 'GEMINI_API_KEY not configured on server',
+          fallback: true
+        });
+        return;
+      }
+
+      const { scriptText, logline, cast } = req.body as {
+        scriptText?: string;
+        logline?: string;
+        cast?: Array<{ name: string; role: string; archetype: string }>;
+      };
+
+      if (!scriptText || !scriptText.trim()) {
+        res.status(400).json({ error: 'Missing scriptText' });
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const existingCastSummary = Array.isArray(cast)
+        ? cast.map((c) => `@${c.name} (Role: ${c.role}, Archetype: ${c.archetype})`).join('\n')
+        : 'None';
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Analyze the following screenplay and current cast list. Identify 3 missing character archetypes that would strengthen the dramatic tension, subtext, and narrative scope of this project.\n\nProject Logline:\n${logline || ''}\n\nExisting Cast:\n${existingCastSummary}\n\nScreenplay Content:\n${scriptText}`,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                archetype: { type: Type.STRING },
+                suggestedName: { type: Type.STRING },
+                role: { type: Type.STRING },
+                reason: { type: Type.STRING },
+                dramaticFunction: { type: Type.STRING },
+                facePrompt: { type: Type.STRING },
+                voiceModel: { type: Type.STRING },
+                sampleLine: { type: Type.STRING }
+              },
+              required: [
+                'archetype',
+                'suggestedName',
+                'role',
+                'reason',
+                'dramaticFunction',
+                'facePrompt',
+                'voiceModel',
+                'sampleLine'
+              ]
+            }
+          }
+        }
+      });
+
+      const rawText = response.text || '[]';
+      const suggestions = JSON.parse(rawText);
+      res.json({ suggestions });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Archetype suggestion error';
+      res.status(500).json({
+        error: message,
+        fallback: true
+      });
+    }
+  });
+
   // POST /api/video/generate - Generates or extends a realistic scene video using Veo / Omni Flash
   app.post('/api/video/generate', async (req, res) => {
     try {
@@ -169,7 +243,7 @@ async function startServer() {
   } else {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: false, watch: null },
       appType: 'spa'
     });
     app.use(vite.middlewares);

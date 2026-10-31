@@ -4,6 +4,10 @@ export type CharacterColor = 'orange' | 'cyan' | 'pink' | 'amber' | 'emerald';
 
 export type VisualStyle = 'orchard' | 'cyberpunk' | 'noir' | 'anime' | 'chiaroscuro';
 
+export type ColorGradeLook = 'orchard' | 'kodak' | 'cyberpunk';
+
+export type ShotSfxType = 'guitar' | 'slam' | 'engine';
+
 export type VideoEngineModel =
   | 'fal-ai/veo3'
   | 'fal-ai/kling-video/v2/master/image-to-video'
@@ -55,10 +59,14 @@ export interface SceneShot {
   prompt?: string;
   dialogue?: string;
   speaker?: string;
+  keyframeUrl?: string;
+  sfx?: ShotSfxType;
+  actors?: string[];
+  status?: string;
   videoUrl?: string;
   videoSource?: string;
-  videoResolution?: '720p' | '1080p';
-  videoClipDuration?: '5s' | '10s';
+  videoResolution?: '720p' | '1080p' | '4k';
+  videoClipDuration?: '4s' | '5s' | '10s';
   lastInteractionId?: string;
 }
 
@@ -80,4 +88,19 @@ export interface AudioTrackMix {
   volume: number;
   muted: boolean;
   synthType: 'rain' | 'hum' | 'pulse' | 'foley';
+}
+
+export interface SuggestedArchetype {
+  id: string;
+  archetype: string;
+  suggestedName: string;
+  role: CharacterRole;
+  roleTitle: string;
+  reason: string;
+  dramaticFunction: string;
+  facePrompt: string;
+  voiceModel: string;
+  sampleLine: string;
+  avatarUrl: string;
+  color: CharacterColor;
 }

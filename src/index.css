@@ -10,7 +10,7 @@
 
   body {
     font-family: var(--font-sans);
-    background-color: #070b14;
+    background-color: #060a12;
     color: #f8fafc;
     overflow-x: hidden;
   }
@@ -27,6 +27,79 @@
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+@keyframes kenburns {
+  0% {
+    transform: scale(1.0) translate(0, 0);
+  }
+  100% {
+    transform: scale(1.12) translate(-1.5%, -1%);
+  }
+}
+
+@keyframes kenburnsCrossfadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(1.02) translate(0.5%, 0.5%);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.12) translate(-1.5%, -1%);
+  }
+}
+
+@keyframes shotCrossfadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(1.015);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shotCrossfadeOut {
+  0% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.09);
+  }
+}
+
+.animate-dolly {
+  animation: kenburns 6s ease-out forwards;
+}
+
+.animate-dolly-crossfade {
+  animation: kenburnsCrossfadeIn 6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-shot-fade-in {
+  animation: shotCrossfadeIn 650ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-shot-fade-out {
+  animation: shotCrossfadeOut 650ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.look-orchard {
+  filter: sepia(0.18) contrast(1.08) saturate(1.15);
+}
+
+.look-kodak {
+  filter: contrast(1.2) saturate(0.85) brightness(0.95);
+}
+
+.look-cyberpunk {
+  filter: hue-rotate(170deg) saturate(1.4) contrast(1.15);
 }
 
 /* Subtle studio scrollbars */
